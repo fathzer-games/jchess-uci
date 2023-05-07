@@ -39,6 +39,7 @@ public interface Engine {
 	 * <br>Please note that:<ul>
  	 * <li>The returned task is considered as a 'long running method' and its supplier will be called on a different thread than methods of this class.</li>
 	 * <li>The supplier should be cooperative with the stopper; It should end as quickly as possible when stopper is invoked and <b>always</b> return a move.</li>
+	 * </ul>
 	 * @return A long running task able to compute the engine's move.
 	 */
 	LongRunningTask<UCIMove> go();

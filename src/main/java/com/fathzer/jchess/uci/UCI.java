@@ -33,7 +33,7 @@ import com.fathzer.jchess.uci.option.Option;
  * <br>It accepts the following extensions:<ul>
  * <li>It can accept different engines, that can be selected using the 'engine' command.<br>
  * You can view these engines as plugins.</li> 
- * <li>engine [engineId]</li> //TODO
+ * <li>engine [engineId] //TODO</li>
  * <li>d [fen]: Displays a textual representation of the game. If the command is followed by 'fen', the representation is the <a href="https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation">Forsyth–Edwards Notation</a> representation.</li>
  * <li>perft depth [nbThreads]: Run <a href="https://www.chessprogramming.org/Perft">perft</a> test and displays the divide result. depth is mandatory and is the search depth of perft algorithm. It should be strictly positive. NbThreads allowed to process the queries. This number should be strictly positive.<br>Default is 1.</li>
  * <li>q is a shortcut for quit</li>
