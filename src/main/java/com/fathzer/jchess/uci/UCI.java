@@ -232,7 +232,7 @@ public class UCI implements Runnable {
 		doBackground(() -> doPerft(task, parallelism.get()), task::stop);
 	}
 	
-	protected <M> LongRunningTask<PerfTResult<UCIMove>> getPerfTTask(UCIMoveGeneratorProvider<?> engine, int depth, int parallelism) {
+	protected LongRunningTask<PerfTResult<UCIMove>> getPerfTTask(UCIMoveGeneratorProvider<?> engine, int depth, int parallelism) {
 		return new PerftTask<>(engine, depth, parallelism);
 	}
 
