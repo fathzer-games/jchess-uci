@@ -228,12 +228,8 @@ public class UCI implements Runnable {
 		if (parallelism.get()<1) {
 			debug("Number of threads should be strictly positive");
 		}
-		final LongRunningTask<PerfTResult<UCIMove>> task = getPerfTTask((UCIMoveGeneratorProvider<?>)engine, depth.get(), parallelism.get());
+		final LongRunningTask<PerfTResult<UCIMove>> task = new PerftTask<>((UCIMoveGeneratorProvider<?>)engine, depth.get(), parallelism.get());
 		doBackground(() -> doPerft(task, parallelism.get()), task::stop);
-	}
-	
-	protected LongRunningTask<PerfTResult<UCIMove>> getPerfTTask(UCIMoveGeneratorProvider<?> engine, int depth, int parallelism) {
-		return new PerftTask<>(engine, depth, parallelism);
 	}
 
 	private void doPerft(LongRunningTask<PerfTResult<UCIMove>> task, int parallelism) {
@@ -329,7 +325,7 @@ public class UCI implements Runnable {
 		}
 	}
 
-	private void out(Throwable e, int level) {
+	protected void out(Throwable e, int level) {
 		out((level>0 ? "caused by":"")+e.toString());
 		Arrays.stream(e.getStackTrace()).forEach(f -> out(f.toString()));
 		if (e.getCause()!=null) {
