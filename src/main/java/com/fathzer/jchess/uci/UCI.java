@@ -14,15 +14,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import com.fathzer.games.MoveGenerator;
-import com.fathzer.games.perft.Divide;
-import com.fathzer.games.perft.PerfT;
 import com.fathzer.games.perft.PerfTResult;
-import com.fathzer.games.util.ContextualizedExecutor;
 import com.fathzer.jchess.uci.option.Option;
 
 /** A class that implements a subset of the <a href="http://wbec-ridderkerk.nl/html/UCIProtocol.html">UCI protocol</a>.
@@ -36,7 +30,7 @@ import com.fathzer.jchess.uci.option.Option;
  * <br>It accepts the following extensions:<ul>
  * <li>It can accept different engines, that can be selected using the 'engine' command.<br>
  * You can view these engines as plugins.</li> 
- * <li>engine [engineId] //TODO</li>
+ * <li>engine [engineId] Lists the available engines id or change the engine if <i>engineId</i> is provided</li>
  * <li>d [fen]: Displays a textual representation of the game. If the command is followed by 'fen', the representation is the <a href="https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation">Forsyth–Edwards Notation</a> representation.</li>
  * <li>perft depth [nbThreads]: Run <a href="https://www.chessprogramming.org/Perft">perft</a> test and displays the divide result. depth is mandatory and is the search depth of perft algorithm. It should be strictly positive. NbThreads allowed to process the queries. This number should be strictly positive.<br>Default is 1.</li>
  * <li>q is a shortcut for quit</li>
@@ -44,7 +38,7 @@ import com.fathzer.jchess.uci.option.Option;
  * @see Engine
  */
 public class UCI implements Runnable {
-	private static final BackgroundTaskManager BACK = new BackgroundTaskManager();
+	private final BackgroundTaskManager BACK = new BackgroundTaskManager(e -> out(e, 0));
 	private static final String MOVES = "moves";
 	private static final String ENGINE_CMD = "engine";
 	private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.nnnnnnnn");
@@ -234,30 +228,12 @@ public class UCI implements Runnable {
 		if (parallelism.get()<1) {
 			debug("Number of threads should be strictly positive");
 		}
-		final LongRunningTask<PerfTResult<UCIMove>> task = getPerfTTask(depth.get(), parallelism.get());
+		final LongRunningTask<PerfTResult<UCIMove>> task = getPerfTTask((UCIMoveGeneratorProvider<?>)engine, depth.get(), parallelism.get());
 		doBackground(() -> doPerft(task, parallelism.get()), task::stop);
 	}
 	
-	protected <M> LongRunningTask<PerfTResult<UCIMove>> getPerfTTask(int depth, int parallelism) {
-		try (ContextualizedExecutor<MoveGenerator<M>> exec = new ContextualizedExecutor<>(parallelism)) {
-			final PerfT<M> perft = new PerfT<>(exec);
-			return new LongRunningTask<PerfTResult<UCIMove>>() {
-				@Override
-				public PerfTResult<UCIMove> get() {
-					Supplier<MoveGenerator<M>> supplier = (Supplier<MoveGenerator<M>>)getEngine();
-					final PerfTResult<M> result = perft.divide(depth, supplier);
-					final UCIMoveGenerator<M> uciMoveGenerator = (UCIMoveGenerator<M>)supplier.get();
-					final Function<Divide<M>, Divide<UCIMove>> mapper = d -> new Divide<>(uciMoveGenerator.toUCI(d.getMove()), d.getCount());
-					return new PerfTResult<>(result.getNbMovesMade(), result.getNbMovesFound(), result.getDivides().stream().map(mapper).collect(Collectors.toList()), result.isInterrupted());
-				}
-	
-				@Override
-				public void stop() {
-					super.stop();
-					perft.interrupt();
-				}
-			};
-		}
+	protected <M> LongRunningTask<PerfTResult<UCIMove>> getPerfTTask(UCIMoveGeneratorProvider<?> engine, int depth, int parallelism) {
+		return new PerftTask<>(engine, depth, parallelism);
 	}
 
 	private void doPerft(LongRunningTask<PerfTResult<UCIMove>> task, int parallelism) {
