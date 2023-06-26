@@ -7,7 +7,6 @@
 A java implementation of the chess UCI protocol with pluggable chess engines.
 
 ## TODO
-* Implement uci.doPerfStat with no dependency to JChess
 * Think about where Perft data set should be stored (An extra artifact?)
 * Allow UCI to get its input/output elsewhere from System.in/out
 * Implement a plugin loader? Ask myself if uci.bat/uci.sh are in their right places (UCI has no main anymore).
