@@ -10,13 +10,21 @@ import java.text.NumberFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import com.fathzer.games.perft.TestableMoveGeneratorSupplier;
+import com.fathzer.games.perft.MoveGeneratorChecker;
 import com.fathzer.games.perft.PerfTResult;
+import com.fathzer.games.perft.PerfTTestData;
 import com.fathzer.jchess.uci.option.Option;
 
 /** A class that implements a subset of the <a href="http://wbec-ridderkerk.nl/html/UCIProtocol.html">UCI protocol</a>.
@@ -28,14 +36,25 @@ import com.fathzer.jchess.uci.option.Option;
  * </ul>
  * <br>It also does not recognize commands starting with unknown token (to be honest, it's not very hard to implement but seemed a very bad, error prone, idea to me).
  * <br>It accepts the following extensions:<ul>
- * <li>It can accept different engines, that can be selected using the 'engine' command.<br>
- * You can view these engines as plugins.</li> 
- * <li>engine [engineId] Lists the available engines id or change the engine if <i>engineId</i> is provided</li>
- * <li>d [fen]: Displays a textual representation of the game. If the command is followed by 'fen', the representation is the <a href="https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation">Forsyth–Edwards Notation</a> representation.</li>
- * <li>perft depth [nbThreads]: Run <a href="https://www.chessprogramming.org/Perft">perft</a> test and displays the divide result. depth is mandatory and is the search depth of perft algorithm. It should be strictly positive. NbThreads allowed to process the queries. This number should be strictly positive.<br>Default is 1.</li>
+ * <li>It can accept different engines, that can be selected using the 'engine' command.
+ *   <br>You can view these engines as plugins.</li> 
+ * <li>engine [<i>engineId</i>] Lists the available engines id or change the engine if <i>engineId</i> is provided.</li>
+ * <li>d [<i>fen</i>]: Displays a textual representation of the game. If the command is followed by '<i>fen</i>', the representation is the <a href="https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation">Forsyth–Edwards Notation</a> representation.</li>
+ * <li>perft <i>depth</i> [<i>nbThreads</i>]: Run <a href="https://www.chessprogramming.org/Perft">perft</a> test and displays the divide result.
+ *   <br><i>depth</i> is mandatory and is the search depth of perft algorithm. It should be strictly positive.
+ *   <br><i>nbThreads</i> is the number of threads used to process the queries. This number should be strictly positive. Default is 1.
+ *   <br>This command is optional, only engines that implement MoveGeneratorSupplier interface support it.</li>
+ * <li>test <i>depth</i> [<i>nbThreads</i> [<i>cutTime</i>]]: Runs a move generator test based on <a href="https://www.chessprogramming.org/Perft">perft</a>.
+ *   <br>It also can be used to test engine's performance as it outputs the number of moves generated per second.
+ *   <br><i>depth</i> is mandatory and is the search depth of perft algorithm. It should be strictly positive.
+ *   <br><i>nbThreads</i> is the number of threads used to process the test. This number should be strictly positive. Default is 1.
+ *   <br><i>cutTime</i> is the number of seconds allowed to process the test. This number should be strictly positive. Default is Integer.MAX_VALUE.
+ *   <br>This command is optional, only engines that implement TestableMoveGeneratorSupplier interface support it.
+ *   <br>This command requires the {@link #readTestData()} method to be overridden in order to return a non empty test data set.
  * <li>q is a shortcut for quit</li>
  * </ul>
  * @see Engine
+ * @see #readTestData()
  */
 public class UCI implements Runnable {
 	private final BackgroundTaskManager BACK = new BackgroundTaskManager(e -> out(e, 0));
@@ -47,8 +66,8 @@ public class UCI implements Runnable {
 	private final Map<String, Engine> engines = new HashMap<>();
 	
 	private Engine engine;
-	private boolean debug = Boolean.getBoolean("debugUCI");
-	private boolean debugUCI = false;
+	private boolean debug = Boolean.getBoolean("logToFile");
+	private boolean debugUCI = Boolean.getBoolean("debugUCI");
 	private Map<String, Option<?>> options;
 	
 	public UCI(Engine defaultEngine) {
@@ -66,6 +85,7 @@ public class UCI implements Runnable {
 		addCommand(this::doDisplay, "d");
 		addCommand(this::doPerft, "perft");
 		addCommand(this::doEngine,ENGINE_CMD);
+		addCommand(this::doPerfStat,"test");
 		if (System.console()!=null) {
 			log(false, "Input from System.console()");
 		} else {
@@ -161,7 +181,7 @@ public class UCI implements Runnable {
 			return;
 		}
 		log("Setting board to FEN",fen);
-		getEngine().setFEN(fen);
+		getEngine().setStartPosition(fen);
 		Arrays.stream(tokens).dropWhile(t->!MOVES.equals(t)).skip(1).forEach(this::doMove);
 	}
 	
@@ -205,46 +225,93 @@ public class UCI implements Runnable {
 		}
 	}
 	
-	protected void doPerft(String[] tokens) {
+	protected <M> void doPerft(String[] tokens) {
 		if (engine.getFEN()==null) {
 			debug("No position defined");
 			return;
 		}
-		if (! (engine instanceof UCIMoveGeneratorProvider)) {
+		if (! (engine instanceof MoveGeneratorSupplier)) {
 			debug("perft is not supported by this engine");
 			return;
 		}
-		final Optional<Integer> depth = parseInt(tokens, 0, null);
-		if (depth.isEmpty()) {
+		Optional<List<Integer>> params = new ParamsParser<>(this::debug, Integer::parseInt, (i,v) -> v>0).parse(tokens, Arrays.asList("search depth", "number of threads"), Arrays.asList(null, 1));
+		if (params.isEmpty()) {
 			return;
 		}
-		if (depth.get()<1) {
-			debug("Search depth should be strictly positive");
-		}
-		final Optional<Integer> parallelism = parseInt(tokens, 1, 1);
-		if (parallelism.isEmpty()) {
-			return;
-		}
-		if (parallelism.get()<1) {
-			debug("Number of threads should be strictly positive");
-		}
-		final LongRunningTask<PerfTResult<UCIMove>> task = new PerftTask<>((UCIMoveGeneratorProvider<?>)engine, depth.get(), parallelism.get());
-		doBackground(() -> doPerft(task, parallelism.get()), task::stop);
+		final int depth = params.get().get(0);
+		final int parallelism = params.get().get(1);
+		@SuppressWarnings("unchecked")
+		final LongRunningTask<PerfTResult<M>> task = new PerftTask<>((MoveGeneratorSupplier<M>)engine, depth, parallelism);
+		doBackground(() -> doPerft(task, parallelism), task::stop);
 	}
 
-	private void doPerft(LongRunningTask<PerfTResult<UCIMove>> task, int parallelism) {
+	private <M> void doPerft(LongRunningTask<PerfTResult<M>> task, int parallelism) {
 		final long start = System.currentTimeMillis(); 
-		final PerfTResult<UCIMove> result = task.get();
+		final PerfTResult<M> result = task.get();
+
 		final long duration = System.currentTimeMillis() - start;
 		if (result.isInterrupted()) {
 			out("perft process has been interrupted");
 		} else {
-			result.getDivides().stream().forEach(d -> out (d.getMove().toString()+": "+d.getCount()));
+			result.getDivides().stream().forEach(d -> out (toString(d.getMove())+": "+d.getCount()));
 			final long sum = result.getNbLeaves();
 			out("perft "+f(sum)+" leaves in "+f(duration)+"ms ("+f(sum*1000/duration)+" leaves/s) (using "+parallelism+" thread(s))");
 			out("perft "+f(result.getNbMovesFound())+" moves generated ("+f(result.getNbMovesFound()*1000/duration)+" mv/s). " + 
 				f(result.getNbMovesMade())+" moves made ("+f(result.getNbMovesMade()*1000/duration)+" mv/s)");
 		}
+	}
+	
+	private <M> String toString(M move) {
+		return (getEngine() instanceof MoveToUCIConverter) ? ((MoveToUCIConverter<M>)engine).toUCI(move) : move.toString();
+	}
+	
+	protected void doPerfStat(String[] tokens) {
+		if (! (getEngine() instanceof TestableMoveGeneratorSupplier)) {
+			debug("perf is not supported by this engine");
+		}
+		final Optional<List<Integer>> params = new ParamsParser<>(this::debug, Integer::parseInt, (i,v)->v>0).parse(tokens, Arrays.asList("search depth", "number of threads", "cut time"), Arrays.asList(null,1,Integer.MAX_VALUE));
+		if (params.isEmpty()) {
+			return;
+		}
+		final Collection<PerfTTestData> testData = readTestData();
+		if (testData.isEmpty()) {
+			out("No test data available");
+			debug("You may override readTestData to read some data");
+			return;
+		}
+		final int depth = params.get().get(0);
+		final int parallelism = params.get().get(1);
+		final int cutTime = params.get().get(2);
+		doPerfStat(testData, (TestableMoveGeneratorSupplier<?>)getEngine(), depth, parallelism, cutTime);
+	}
+
+	private <M> void doPerfStat(Collection<PerfTTestData> testData, TestableMoveGeneratorSupplier<M> engine, int depth, final int parallelism, int cutTime) {
+		final MoveGeneratorChecker test = new MoveGeneratorChecker(testData);
+		test.setErrorManager(e-> out(e,0));
+		test.setCountErrorManager(e -> out("Error for "+e.getStartPosition()+" expected "+e.getExpectedCount()+" got "+e.getActualCount()));
+		final TimerTask task = new TimerTask() {
+			@Override
+			public void run() {
+				doStop(null);
+			}
+		};
+		doBackground(() -> {
+			final Timer timer = new Timer();
+			timer.schedule(task, 1000L*cutTime);
+			try {
+				final long start = System.currentTimeMillis();
+				long sum = test.run(depth, parallelism, engine);
+				final long duration = System.currentTimeMillis() - start;
+				out("perf: "+f(sum)+" moves in "+f(duration)+"ms ("+f(sum*1000/duration)+" mv/s) (using "+parallelism+" thread(s))");
+			} finally {
+				timer.cancel();
+			}
+			
+		}, test::cancel);
+	}
+	
+	protected Collection<PerfTTestData> readTestData() {
+		return Collections.emptyList();
 	}
 
 	protected void doEngine(String[] tokens) {
@@ -261,7 +328,7 @@ public class UCI implements Runnable {
 			}
 			final String pos = getEngine().getFEN();
 			if (pos!=null) {
-				newEngine.setFEN(pos);
+				newEngine.setStartPosition(pos);
 			}
 			this.engine = newEngine;
 			buildOptionsTable(newEngine.getOptions());
@@ -278,21 +345,6 @@ public class UCI implements Runnable {
 	private void buildOptionsTable(Option<?>[] options) {
 		this.options = new HashMap<>();
 		Arrays.stream(options).forEach(o -> this.options.put(o.getName(), o));
-	}
-
-	protected Optional<Integer> parseInt(String[] tokens, final int index, Integer defaultValue) {
-		if (tokens.length<=index) {
-			if (defaultValue==null) {
-				debug("Missing argument");
-			}
-			return Optional.ofNullable(defaultValue);
-		}
-		try {
-			return Optional.of(Integer.parseInt(tokens[index]));
-		} catch (IllegalArgumentException e) {
-			debug("invalid parameter "+tokens[index]);
-			return Optional.empty();
-		}
 	}
 
 	private static String f(long num) {

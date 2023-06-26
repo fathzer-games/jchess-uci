@@ -30,7 +30,7 @@ public interface Engine {
 	/** Sets the start position.
 	 * @param fen The start position in the fen format.
 	 */
-	void setFEN(String fen);
+	void setStartPosition(String fen);
 	/** Moves a piece on the chess board.
 	 * @param move The move to apply.
 	 */
