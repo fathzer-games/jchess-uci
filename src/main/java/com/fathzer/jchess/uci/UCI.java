@@ -57,7 +57,7 @@ import com.fathzer.jchess.uci.option.Option;
  * @see #readTestData()
  */
 public class UCI implements Runnable {
-	private final BackgroundTaskManager BACK = new BackgroundTaskManager(e -> out(e, 0));
+	private static final BufferedReader IN = new BufferedReader(new InputStreamReader(System.in));
 	private static final String MOVES = "moves";
 	private static final String ENGINE_CMD = "engine";
 	private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.nnnnnnnn");
@@ -65,6 +65,7 @@ public class UCI implements Runnable {
 	private final Map<String, Consumer<String[]>> executors = new HashMap<>();
 	private final Map<String, Engine> engines = new HashMap<>();
 	
+	private final BackgroundTaskManager BACK = new BackgroundTaskManager(e -> out(e, 0));
 	private Engine engine;
 	private boolean debug = Boolean.getBoolean("logToFile");
 	private boolean debugUCI = Boolean.getBoolean("debugUCI");
@@ -406,7 +407,11 @@ public class UCI implements Runnable {
 		}
 	}
 
-	private static final BufferedReader IN = new BufferedReader(new InputStreamReader(System.in));
+	/** Gets the next command from UCI client.
+	 * <br>This method blocks until a command is available.
+	 * <br>One can override this method in order to get commands from somewhere other than standard console input.
+	 * @return The net command
+	 */
 	protected String getNextCommand() {
 		String line;
 	    if (System.console() != null) {
@@ -421,6 +426,10 @@ public class UCI implements Runnable {
     	return line.trim();
 	}
 	
+	/** Send a reply to UCI client.
+	 * <br>One can override this method in order to send replies to somewhere other than standard console input.
+	 * @param message The reply to send.
+	 */
 	protected void out(CharSequence message) {
     	log(":",message.toString());
 		System.out.println(message);
