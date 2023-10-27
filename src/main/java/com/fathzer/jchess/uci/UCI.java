@@ -268,7 +268,7 @@ public class UCI implements Runnable {
 	
 	protected void doPerfStat(String[] tokens) {
 		if (! (getEngine() instanceof TestableMoveGeneratorSupplier)) {
-			debug("perf is not supported by this engine");
+			debug("test is not supported by this engine");
 		}
 		final Optional<List<Integer>> params = new ParamsParser<>(this::debug, Integer::parseInt, (i,v)->v>0).parse(tokens, Arrays.asList("search depth", "number of threads", "cut time"), Arrays.asList(null,1,Integer.MAX_VALUE));
 		if (params.isEmpty()) {
