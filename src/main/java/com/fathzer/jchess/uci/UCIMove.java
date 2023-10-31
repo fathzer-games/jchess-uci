@@ -12,9 +12,13 @@ public class UCIMove {
 	}
 
 	public static UCIMove from(String uci) {
-		final String from = uci.substring(0, 2);
-		final String to = uci.substring(2, 4);
-		return new UCIMove(from, to, uci.length()>4 ? uci.substring(4, 5) : null);
+		try {
+			final String from = uci.substring(0, 2);
+			final String to = uci.substring(2, 4);
+			return new UCIMove(from, to, uci.length()>4 ? uci.substring(4, 5) : null);
+		} catch (IndexOutOfBoundsException e) {
+			throw new IllegalArgumentException(e);
+		}
 	}
 
 	public String getFrom() {

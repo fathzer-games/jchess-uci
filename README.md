@@ -13,5 +13,4 @@ If you want another way to exchange messages, you can subclass the UCI class and
 
 ## TODO
 * Verify the engine is protected against strange client behavior (like changing the position during a go request).
-* Think about where Perft data set should be stored (An extra artifact?)
 * Implement a plugin loader? Ask myself if uci.bat/uci.sh are in their right places (UCI has no main anymore).

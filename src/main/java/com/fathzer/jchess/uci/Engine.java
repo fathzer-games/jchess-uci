@@ -2,6 +2,8 @@ package com.fathzer.jchess.uci;
 
 import com.fathzer.jchess.uci.option.Option;
 
+/** An engine able to respond to UCI protocol.
+ */
 public interface Engine {
 	/** Gets the engine's id, the one returned when a uci command is received.
 	 * @return a non null String
@@ -40,9 +42,10 @@ public interface Engine {
  	 * <li>The returned task is considered as a 'long running method' and its supplier will be called on a different thread than methods of this class.</li>
 	 * <li>The supplier should be cooperative with the stopper; It should end as quickly as possible when stopper is invoked and <b>always</b> return a move.</li>
 	 * </ul>
+	 * @param params The go parameters.
 	 * @return A long running task able to compute the engine's move.
 	 */
-	LongRunningTask<UCIMove> go();
+	LongRunningTask<BestMoveReply> go(GoOptions params);
 	
 	/** Returns a string representation of the board.
 	 * <br>The representation is totally free. The default implementation returns the fen representation.

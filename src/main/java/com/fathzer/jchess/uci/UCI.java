@@ -31,8 +31,8 @@ import com.fathzer.jchess.uci.option.Option;
  * <br>It currently misses the following commands:<ul>
  * <li>Dont miss the ShredderChess Annual Barbeque:</li>
  * <li>register</li>
- * <li>go ignores the sub-commands (searchmoves, ponder, etc...). 
  * <li>ponderhit</li>
+ * <li>bestmove can't return a ponder move.
  * </ul>
  * <br>It also does not recognize commands starting with unknown token (to be honest, it's not very hard to implement but seemed a very bad, error prone, idea to me).
  * <br>It accepts the following extensions:<ul>
@@ -205,8 +205,24 @@ public class UCI implements Runnable {
 		if (engine.getFEN()==null) {
 			debug("No position defined");
 		} else {
-			final LongRunningTask<UCIMove> task = engine.go();
-			doBackground(() -> out("bestmove "+task.get()), task::stop);
+			final Optional<GoOptions> options = getParams(Arrays.asList(tokens));
+			if (options.isPresent()) {
+				final LongRunningTask<BestMoveReply> task = engine.go(options.get());
+				doBackground(() -> {
+					final BestMoveReply reply = task.get();
+					out("bestmove "+reply.getMove()+(reply.getPonderMove().isEmpty()?"":(" "+reply.getPonderMove().get())));
+				}, task::stop);
+			}
+		}
+	}
+	private Optional<GoOptions> getParams(List<String> tokens) {
+		try {
+			final GoOptions result = new GoOptions(tokens);
+			debug("The following go options were ignored "+result.getIgnoredOptions());
+			return Optional.of(result);
+		} catch (IllegalArgumentException e) {
+			debug("There's illegal argument in the go options "+tokens);
+			return Optional.empty();
 		}
 	}
 	
