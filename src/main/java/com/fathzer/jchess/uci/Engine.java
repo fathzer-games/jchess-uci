@@ -21,9 +21,24 @@ public interface Engine {
 	default void newGame() {
 		// Does nothing by default, assuming the engine do not have cached things
 	}
+	/** Checks whether this engine supports <a href="https://en.wikipedia.org/wiki/Fischer_random_chess">Chess960</a>.
+	 * @return true if chess960 is supported, false (the default) if not.
+	 */
+	default boolean isChess960Supported() {
+		return false;
+	}
+	/** Switches the <a href="https://en.wikipedia.org/wiki/Fischer_random_chess">Chess960</a> mode.
+	 * <br>The default implementation does nothing 
+	 * @param chess960Mode true to start playing with chess 960 rules.
+	 */
+	default void setChess960(boolean chess960Mode) {
+		// Does nothing by default
+	}
 	/** Gets the options supported by the engine.
+	 * <br>This method is called once during the engine instanciation.
 	 * <br>The default implementation returns an empty array.
 	 * @return An option array.
+	 * <br>Please note that there's no need to send the UCI_Chess960 if chess960 is supported. This option will be automatically added if {@link #isChess960Supported()} returns true.
 	 */
 	default Option<?>[] getOptions() {
 		// By default engine has no option

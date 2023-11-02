@@ -144,7 +144,7 @@ public class GoOptions {
 	private List<UCIMove> moveToSearch = new LinkedList<>();
 
 	/** Constructor.
-	 * @param tokens the go command options as tokens (for example: wtime, 297999, btime, 300000, winc, 3000, binc, 3000)
+	 * @param tokenList the go command options as tokens (for example: wtime, 297999, btime, 300000, winc, 3000, binc, 3000)
 	 * @throws IllegalArgumentException if a token is illegal (for instance, we expected a number, but we got a string).
 	 * <br>Please note that unknown options are returned in {@link #getIgnoredOptions()}
 	 */

@@ -25,6 +25,7 @@ import com.fathzer.games.perft.TestableMoveGeneratorSupplier;
 import com.fathzer.games.perft.MoveGeneratorChecker;
 import com.fathzer.games.perft.PerfTResult;
 import com.fathzer.games.perft.PerfTTestData;
+import com.fathzer.jchess.uci.option.CheckOption;
 import com.fathzer.jchess.uci.option.Option;
 
 /** A class that implements a subset of the <a href="http://wbec-ridderkerk.nl/html/UCIProtocol.html">UCI protocol</a>.
@@ -62,11 +63,12 @@ public class UCI implements Runnable {
 	private static final String ENGINE_CMD = "engine";
 	private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.nnnnnnnn");
 	
+	private Engine engine;
 	private final Map<String, Consumer<String[]>> executors = new HashMap<>();
 	private final Map<String, Engine> engines = new HashMap<>();
 	
 	private final BackgroundTaskManager BACK = new BackgroundTaskManager(e -> out(e, 0));
-	private Engine engine;
+	private final Option<Boolean> chess960Option = new CheckOption("UCI_Chess960", (b) -> {if (engine!=null) engine.setChess960(b);}, false);
 	private boolean debug = Boolean.getBoolean("logToFile");
 	private boolean debugUCI = Boolean.getBoolean("debugUCI");
 	private Map<String, Option<?>> options;
@@ -125,8 +127,15 @@ public class UCI implements Runnable {
 		if (author!=null) {
 			out("id author "+author);
 		}
-		for (Option<?> option : engine.getOptions()) {
+		boolean hasChess960 = false;
+		for (Option<?> option : options.values()) {
+			if (chess960Option.getName().equals(option.getName())) {
+				hasChess960 = true;
+			}
 			out(option.toUCI());
+		}
+		if (engine.isChess960Supported() && !hasChess960) {
+			out(chess960Option.toUCI());
 		}
 		out("uciok");
 	}
