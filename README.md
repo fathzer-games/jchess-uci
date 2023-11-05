@@ -7,7 +7,18 @@
 A partial (but yet usable) java implementation of the [chess UCI protocol](https://www.shredderchess.com/chess-features/uci-universal-chess-interface.html) with pluggable chess engines.
 
 ## How to use it
-**TODO**
+This library requires Java 11+ and is available in [Maven central](https://central.sonatype.com/artifact/com.fathzer/jchess-uci).
+
+- First implement the **com.fathzer.jchess.uci.Engine** interface.  
+Let say the implementation class is **MyEngine**.
+- Launch the **com.fathzer.jchess.uci.UCI** class:  
+```java
+// Create your engine
+final Engine = new MyEngine();
+new UCI(engine).run();
+```
+
+That's all!
 
 ## Partial implementation ... and extra functionalities
 It does not directly support the following commands (but you can add them in an *com?fathzer.jchess.uci.UCI* subclass):
@@ -35,6 +46,10 @@ It also can be used to test move generator's performance as it outputs the numbe
   - **This command requires the *com.fathzer.jchess.uci.UCI.readTestData()* method to be overridden** in order to return a non empty test data set.
 -**q** is a shortcut for standard **quit** command</li>
  
+
+## Adding custom commands
+Override the **com.fathzer.jchess.uci.UCI** class and use its *addCommand** method to add your own custom commands.  
+Then instantiate your UCI subclass and launch its **run** method.
 
 ## Get rid of System.out and System.in
 UCI protocol uses standard input and output console to communicate which is not really modern...

@@ -3,6 +3,7 @@ package com.fathzer.jchess.uci;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.Arrays;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
@@ -75,9 +76,21 @@ class GoOptionsTest {
 
 	@Test
 	void illegalValues() {
-		assertThrows(IllegalArgumentException.class, () -> new GoOptions(Arrays.asList("depth ponder".split(" "))));
-		assertThrows(IllegalArgumentException.class, () -> new GoOptions(Arrays.asList("depth -1".split(" "))));
-		assertThrows(IllegalArgumentException.class, () -> new GoOptions(Arrays.asList("nodes ponder".split(" "))));
-		assertThrows(IllegalArgumentException.class, () -> new GoOptions(Arrays.asList("nodes -1".split(" "))));
+		{
+		final List<String> args = Arrays.asList("depth ponder".split(" "));
+		assertThrows(IllegalArgumentException.class, () -> new GoOptions(args));
+		}
+		{
+		final List<String> args = Arrays.asList("depth -1".split(" "));
+		assertThrows(IllegalArgumentException.class, () -> new GoOptions(args));
+		}
+		{
+		final List<String> args = Arrays.asList("nodes ponder".split(" "));
+		assertThrows(IllegalArgumentException.class, () -> new GoOptions(args));
+		}
+		{
+		final List<String> args = Arrays.asList("nodes -1".split(" "));
+		assertThrows(IllegalArgumentException.class, () -> new GoOptions(args));
+		}
 	}
 }
