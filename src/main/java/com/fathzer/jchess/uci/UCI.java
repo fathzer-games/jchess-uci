@@ -33,7 +33,6 @@ import com.fathzer.jchess.uci.option.Option;
  * <li>Dont miss the ShredderChess Annual Barbeque:</li>
  * <li>register</li>
  * <li>ponderhit</li>
- * <li>bestmove can't return a ponder move.
  * </ul>
  * <br>It also does not recognize commands starting with unknown token (to be honest, it's not very hard to implement but seemed a very bad, error prone, idea to me).
  * <br>It accepts the following extensions:<ul>
@@ -67,8 +66,8 @@ public class UCI implements Runnable {
 	private final Map<String, Consumer<String[]>> executors = new HashMap<>();
 	private final Map<String, Engine> engines = new HashMap<>();
 	
-	private final BackgroundTaskManager BACK = new BackgroundTaskManager(e -> out(e, 0));
-	private final Option<Boolean> chess960Option = new CheckOption("UCI_Chess960", (b) -> {if (engine!=null) engine.setChess960(b);}, false);
+	private final BackgroundTaskManager backTasks = new BackgroundTaskManager(e -> out(e, 0));
+	private final Option<Boolean> chess960Option = new CheckOption("UCI_Chess960", b -> {if (engine!=null) engine.setChess960(b);}, false);
 	private boolean debug = Boolean.getBoolean("logToFile");
 	private boolean debugUCI = Boolean.getBoolean("debugUCI");
 	private Map<String, Option<?>> options;
@@ -205,7 +204,7 @@ public class UCI implements Runnable {
 	}
 	
 	protected void doBackground(Runnable task, Runnable stopper) {
-		if (!BACK.doBackground(task, stopper)) {
+		if (!backTasks.doBackground(task, stopper)) {
 			debug("Engine is already working");
 		}
 	}
@@ -214,9 +213,9 @@ public class UCI implements Runnable {
 		if (engine.getFEN()==null) {
 			debug("No position defined");
 		} else {
-			final Optional<GoOptions> options = getParams(Arrays.asList(tokens));
-			if (options.isPresent()) {
-				final LongRunningTask<BestMoveReply> task = engine.go(options.get());
+			final Optional<GoOptions> goOptions = getParams(Arrays.asList(tokens));
+			if (goOptions.isPresent()) {
+				final LongRunningTask<BestMoveReply> task = engine.go(goOptions.get());
 				doBackground(() -> {
 					final BestMoveReply reply = task.get();
 					out("bestmove "+reply.getMove()+(reply.getPonderMove().isEmpty()?"":(" "+reply.getPonderMove().get())));
@@ -236,7 +235,7 @@ public class UCI implements Runnable {
 	}
 	
 	protected void doStop(String[] tokens) {
-		if (!BACK.stop()) {
+		if (!backTasks.stop()) {
 			debug("Nothing to stop");
 		}
 	}
@@ -384,7 +383,7 @@ public class UCI implements Runnable {
 			final String command=getNextCommand();
 	    	log(">",command);
 			if ("quit".equals(command) || "q".equals(command)) {
-				BACK.close();
+				backTasks.close();
 				break;
 			}
 			final String[] tokens = command.split(" ");
@@ -455,11 +454,13 @@ public class UCI implements Runnable {
 	 * <br>One can override this method in order to send replies to somewhere other than standard console input.
 	 * @param message The reply to send.
 	 */
+	@SuppressWarnings("java:S106")
 	protected void out(CharSequence message) {
     	log(":",message.toString());
 		System.out.println(message);
 	}
 	
+	@SuppressWarnings("java:S106")
 	protected void debug(CharSequence message) {
     	log(":","info","UCI debug is", Boolean.toString(debugUCI),message.toString());
 		if (debugUCI) {
