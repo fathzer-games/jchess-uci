@@ -6,25 +6,30 @@ import com.fathzer.games.MoveGenerator;
 import com.fathzer.games.perft.PerfT;
 import com.fathzer.games.perft.PerfTResult;
 import com.fathzer.games.util.ContextualizedExecutor;
+import com.fathzer.jchess.uci.parameters.PerfTParameters;
 
 class PerftTask<M> extends LongRunningTask<PerfTResult<M>> {
 	private PerfT<M> perft;
 	private final Supplier<MoveGenerator<M>> engine;
-	private final int depth;
-	private final int parallelism;
+	private final PerfTParameters params;
 	
 	
-	public PerftTask(Supplier<MoveGenerator<M>> engine, int depth, int parallelism) {
+	public PerftTask(Supplier<MoveGenerator<M>> engine, PerfTParameters params) {
 		this.engine = engine;
-		this.depth = depth;
-		this.parallelism = parallelism;
+		this.params = params;
 	}
 
 	@Override
 	public PerfTResult<M> get() {
-		try (ContextualizedExecutor<MoveGenerator<M>> exec = new ContextualizedExecutor<>(parallelism)) {
+		try (ContextualizedExecutor<MoveGenerator<M>> exec = new ContextualizedExecutor<>(params.getParallelism())) {
 			this.perft = new PerfT<>(exec);
-			return perft.divide(depth, engine::get);
+			if (params.isLegal()) {
+				this.perft.setLegalMoves(true);
+				if (!params.isPlayLeaves()) {
+					this.perft.setPlayLeaves(false);
+				}
+			}
+			return perft.divide(params.getDepth(), engine::get);
 		}
 	}
 

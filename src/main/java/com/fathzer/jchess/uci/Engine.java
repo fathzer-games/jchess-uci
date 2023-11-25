@@ -1,6 +1,7 @@
 package com.fathzer.jchess.uci;
 
 import com.fathzer.jchess.uci.option.Option;
+import com.fathzer.jchess.uci.parameters.GoParameters;
 
 /** An engine able to respond to UCI protocol.
  */
@@ -60,7 +61,7 @@ public interface Engine {
 	 * @param params The go parameters.
 	 * @return A long running task able to compute the engine's move.
 	 */
-	LongRunningTask<BestMoveReply> go(GoOptions params);
+	LongRunningTask<BestMoveReply> go(GoParameters params);
 	
 	/** Returns a string representation of the board.
 	 * <br>The representation is totally free. The default implementation returns the fen representation.
