@@ -59,6 +59,7 @@ protected Collection<PerfTTestData> readTestData() {
 	}
 }
 ``` 
+- **q** is a shortcut for standard **quit** command</li>
 
 ## Adding custom commands
 Override the **com.fathzer.jchess.uci.UCI** class and use its *addCommand* method to add your own custom commands.  
