@@ -12,13 +12,16 @@ import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import com.fathzer.games.perft.TestableMoveGeneratorSupplier;
@@ -27,6 +30,10 @@ import com.fathzer.games.perft.PerfTResult;
 import com.fathzer.games.perft.PerfTTestData;
 import com.fathzer.jchess.uci.option.CheckOption;
 import com.fathzer.jchess.uci.option.Option;
+import com.fathzer.jchess.uci.parameters.GoParameters;
+import com.fathzer.jchess.uci.parameters.Parser;
+import com.fathzer.jchess.uci.parameters.PerfStatsParameters;
+import com.fathzer.jchess.uci.parameters.PerfTParameters;
 
 /** A class that implements a subset of the <a href="http://wbec-ridderkerk.nl/html/UCIProtocol.html">UCI protocol</a>.
  * <br>It does not support all UCI commands and contains some extensions. Please have a look at the project's <a href="https://github.com/fathzer-games/jchess-uci/">README</a> file.
@@ -39,7 +46,7 @@ public class UCI implements Runnable {
 	private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.nnnnnnnn");
 	
 	private Engine engine;
-	private final Map<String, Consumer<String[]>> executors = new HashMap<>();
+	private final Map<String, Consumer<Deque<String>>> executors = new HashMap<>();
 	private final Map<String, Engine> engines = new HashMap<>();
 	
 	private final BackgroundTaskManager backTasks = new BackgroundTaskManager(e -> out(e, 0));
@@ -78,25 +85,26 @@ public class UCI implements Runnable {
 		engines.put(engine.getId(), engine);
 	}
 
-	protected void addCommand(Consumer<String[]> method, String... commands) {
+	protected void addCommand(Consumer<Deque<String>> method, String... commands) {
 		Arrays.stream(commands).forEach(c -> executors.put(c, method));
 	}
 	
-	protected void doDebug(String[] tokens) {
-		if (tokens.length==1) {
-			if ("on".equals(tokens[0])) {
+	protected void doDebug(Deque<String> tokens) {
+		if (tokens.size()==1) {
+			String arg = tokens.pop();
+			if ("on".equals(arg)) {
 				debugUCI = true;
-			} else if ("off".equals(tokens[0])) {
+			} else if ("off".equals(arg)) {
 				debugUCI = false;
 			} else {
-				debug("Wrong argument "+tokens[0]);
+				debug("Wrong argument "+arg);
 			}
 		} else {
 			debug("Expected 1 argument to this command");
 		}
 	}
 
-	protected void doUCI(String[] tokens) {
+	protected void doUCI(Deque<String> tokens) {
 		out("id name "+engine.getId());
 		final String author = engine.getAuthor();
 		if (author!=null) {
@@ -115,16 +123,16 @@ public class UCI implements Runnable {
 		out("uciok");
 	}
 	
-	private String processOption(String[] tokens) {
-		if (tokens.length<2) {
+	private String processOption(Deque<String> tokens) {
+		if (tokens.size()<2) {
 			return "Missing name prefix or option name";
 		}
-		if (!"name".equals(tokens[0])) {
+		if (!"name".equals(tokens.peek())) {
 			return "setoption command should start with name";
 		}
 		// Be aware that option name can be contained by more than 1 token
-		final String name = Arrays.stream(tokens).skip(1).takeWhile(t->!"value".equals(t)).collect(Collectors.joining(" "));
-		final String value = Arrays.stream(tokens).dropWhile(t->!"value".equals(t)).skip(1).collect(Collectors.joining(" "));
+		final String name = tokens.stream().skip(1).takeWhile(t->!"value".equals(t)).collect(Collectors.joining(" "));
+		final String value = tokens.stream().dropWhile(t->!"value".equals(t)).skip(1).collect(Collectors.joining(" "));
 		if (name.isEmpty()) {
 			return "Option name is empty";
 		}
@@ -140,26 +148,27 @@ public class UCI implements Runnable {
 		}
 	}
 	
-	protected void doSetOption(String[] tokens) {
+	protected void doSetOption(Deque<String> tokens) {
 		final String error = processOption(tokens);
 		if (error!=null) {
 			debug(error);
 		}
 	}
 	
-	protected void doIsReady(String[] tokens) {
+	protected void doIsReady(Deque<String> tokens) {
 		out("readyok");
 	}
 
-	protected void doNewGame(String[] tokens) {
+	protected void doNewGame(Deque<String> tokens) {
 		getEngine().newGame();
 	}
 
-	protected void doPosition(String[] tokens) {
+	protected void doPosition(Deque<String> tokens) {
+		final String first = tokens.pop();
 		final String fen;
-		if ("fen".equals(tokens[0])) {
-			fen = getFEN(Arrays.copyOfRange(tokens, 1, tokens.length));
-		} else if ("startpos".equals(tokens[0])) {
+		if ("fen".equals(first)) {
+			fen = getFEN(tokens);
+		} else if ("startpos".equals(first)) {
 			fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 		} else {
 			debug("invalid position definition");
@@ -167,7 +176,7 @@ public class UCI implements Runnable {
 		}
 		log("Setting board to FEN",fen);
 		getEngine().setStartPosition(fen);
-		Arrays.stream(tokens).dropWhile(t->!MOVES.equals(t)).skip(1).forEach(this::doMove);
+		tokens.stream().dropWhile(t->!MOVES.equals(t)).skip(1).forEach(this::doMove);
 	}
 	
 	private void doMove(String move) {
@@ -175,8 +184,8 @@ public class UCI implements Runnable {
 		getEngine().move(UCIMove.from(move));
 	}
 	
-	private String getFEN(String[] tokens) {
-		return Arrays.stream(tokens).takeWhile(t -> !MOVES.equals(t)).collect(Collectors.joining(" "));
+	private String getFEN(Collection<String> tokens) {
+		return tokens.stream().takeWhile(t -> !MOVES.equals(t)).collect(Collectors.joining(" "));
 	}
 	
 	protected void doBackground(Runnable task, Runnable stopper) {
@@ -185,11 +194,11 @@ public class UCI implements Runnable {
 		}
 	}
 
-	protected void doGo(String[] tokens) {
+	protected void doGo(Deque<String> tokens) {
 		if (engine.getFEN()==null) {
 			debug("No position defined");
 		} else {
-			final Optional<GoOptions> goOptions = getParams(Arrays.asList(tokens));
+			final Optional<GoParameters> goOptions = parse(GoParameters::new, GoParameters.PARSER, tokens);
 			if (goOptions.isPresent()) {
 				final LongRunningTask<BestMoveReply> task = engine.go(goOptions.get());
 				doBackground(() -> {
@@ -199,34 +208,38 @@ public class UCI implements Runnable {
 			}
 		}
 	}
-	private Optional<GoOptions> getParams(List<String> tokens) {
+
+	private <T> Optional<T> parse(Supplier<T> builder, Parser<T> parser, Deque<String> tokens) {
 		try {
-			final GoOptions result = new GoOptions(tokens);
-			debug("The following go options were ignored "+result.getIgnoredOptions());
+			final T result = builder.get();
+			final List<String> ignored = parser.parse(result, tokens);
+			if (!ignored.isEmpty()) {
+				debug("The following parameters were ignored "+ignored);
+			}
 			return Optional.of(result);
 		} catch (IllegalArgumentException e) {
-			debug("There's illegal argument in the go options "+tokens);
+			debug("There's an illegal argument in "+tokens);
 			return Optional.empty();
 		}
 	}
-	
-	protected void doStop(String[] tokens) {
+
+	protected void doStop(Deque<String> tokens) {
 		if (!backTasks.stop()) {
 			debug("Nothing to stop");
 		}
 	}
 	
-	protected void doDisplay(String[] tokens) {
-		if (tokens.length==0) {
+	protected void doDisplay(Deque<String> tokens) {
+		if (tokens.isEmpty()) {
 			out(getEngine().getBoardAsString());
-		} else if (tokens.length==1 && "fen".equals(tokens[0])) {
+		} else if (tokens.size()==1 && "fen".equals(tokens.peek())) {
 			out(getEngine().getFEN());
 		} else {
 			debug("Unknown display options "+Arrays.asList(tokens));
 		}
 	}
 	
-	protected <M> void doPerft(String[] tokens) {
+	protected <M> void doPerft(Deque<String> tokens) {
 		if (engine.getFEN()==null) {
 			debug("No position defined");
 			return;
@@ -235,18 +248,15 @@ public class UCI implements Runnable {
 			debug("perft is not supported by this engine");
 			return;
 		}
-		Optional<List<Integer>> params = new ParamsParser<>(this::debug, Integer::parseInt, (i,v) -> v>0).parse(tokens, Arrays.asList("search depth", "number of threads"), Arrays.asList(null, 1));
-		if (params.isEmpty()) {
-			return;
+		final Optional<PerfTParameters> params = parse(PerfTParameters::new, PerfTParameters.PARSER, tokens);
+		if (params.isPresent()) {
+			@SuppressWarnings("unchecked")
+			final LongRunningTask<PerfTResult<M>> task = new PerftTask<>((MoveGeneratorSupplier<M>)engine, params.get());
+			doBackground(() -> doPerft(task, params.get()), task::stop);
 		}
-		final int depth = params.get().get(0);
-		final int parallelism = params.get().get(1);
-		@SuppressWarnings("unchecked")
-		final LongRunningTask<PerfTResult<M>> task = new PerftTask<>((MoveGeneratorSupplier<M>)engine, depth, parallelism);
-		doBackground(() -> doPerft(task, parallelism), task::stop);
 	}
 
-	private <M> void doPerft(LongRunningTask<PerfTResult<M>> task, int parallelism) {
+	private <M> void doPerft(LongRunningTask<PerfTResult<M>> task, PerfTParameters params) {
 		final long start = System.currentTimeMillis(); 
 		final PerfTResult<M> result = task.get();
 
@@ -256,8 +266,8 @@ public class UCI implements Runnable {
 		} else {
 			result.getDivides().stream().forEach(d -> out (toString(d.getMove())+": "+d.getCount()));
 			final long sum = result.getNbLeaves();
-			out("perft "+f(sum)+" leaves in "+f(duration)+"ms ("+f(sum*1000/duration)+" leaves/s) (using "+parallelism+" thread(s))");
-			out("perft "+f(result.getNbMovesFound())+" moves generated ("+f(result.getNbMovesFound()*1000/duration)+" mv/s). " + 
+			out("perft "+f(sum)+" leaves in "+f(duration)+"ms ("+f(sum*1000/duration)+" leaves/s) (using "+params.getParallelism()+" thread(s))");
+			out("perft "+f(result.getNbMovesFound())+" "+(params.isLegal()?"":"peudo-")+"legal moves generated ("+f(result.getNbMovesFound()*1000/duration)+" mv/s). " + 
 				f(result.getNbMovesMade())+" moves made ("+f(result.getNbMovesMade()*1000/duration)+" mv/s)");
 		}
 	}
@@ -266,27 +276,23 @@ public class UCI implements Runnable {
 		return (getEngine() instanceof MoveToUCIConverter) ? ((MoveToUCIConverter<M>)engine).toUCI(move) : move.toString();
 	}
 	
-	protected void doPerfStat(String[] tokens) {
+	protected void doPerfStat(Deque<String> tokens) {
 		if (! (getEngine() instanceof TestableMoveGeneratorSupplier)) {
 			debug("test is not supported by this engine");
 		}
-		final Optional<List<Integer>> params = new ParamsParser<>(this::debug, Integer::parseInt, (i,v)->v>0).parse(tokens, Arrays.asList("search depth", "number of threads", "cut time"), Arrays.asList(null,1,Integer.MAX_VALUE));
-		if (params.isEmpty()) {
-			return;
+		final Optional<PerfStatsParameters> params = parse(PerfStatsParameters::new, PerfStatsParameters.PARSER, tokens);
+		if (params.isPresent()) {
+			final Collection<PerfTTestData> testData = readTestData();
+			if (testData.isEmpty()) {
+				out("No test data available");
+				debug("You may override readTestData to read some data");
+				return;
+			}
+			doPerfStat(testData, (TestableMoveGeneratorSupplier<?>)getEngine(), params.get());
 		}
-		final Collection<PerfTTestData> testData = readTestData();
-		if (testData.isEmpty()) {
-			out("No test data available");
-			debug("You may override readTestData to read some data");
-			return;
-		}
-		final int depth = params.get().get(0);
-		final int parallelism = params.get().get(1);
-		final int cutTime = params.get().get(2);
-		doPerfStat(testData, (TestableMoveGeneratorSupplier<?>)getEngine(), depth, parallelism, cutTime);
 	}
 
-	private <M> void doPerfStat(Collection<PerfTTestData> testData, TestableMoveGeneratorSupplier<M> engine, int depth, final int parallelism, int cutTime) {
+	private <M> void doPerfStat(Collection<PerfTTestData> testData, TestableMoveGeneratorSupplier<M> engine, PerfStatsParameters params) {
 		final MoveGeneratorChecker test = new MoveGeneratorChecker(testData);
 		test.setErrorManager(e-> out(e,0));
 		test.setCountErrorManager(e -> out("Error for "+e.getStartPosition()+" expected "+e.getExpectedCount()+" got "+e.getActualCount()));
@@ -298,16 +304,15 @@ public class UCI implements Runnable {
 		};
 		doBackground(() -> {
 			final Timer timer = new Timer();
-			timer.schedule(task, 1000L*cutTime);
+			timer.schedule(task, 1000L*params.getCutTime());
 			try {
 				final long start = System.currentTimeMillis();
-				long sum = test.run(depth, parallelism, engine);
+				long sum = test.run(engine, params.getDepth(), params.isLegal() , params.isPlayLeaves(), params.getParallelism());
 				final long duration = System.currentTimeMillis() - start;
-				out("perf: "+f(sum)+" moves in "+f(duration)+"ms ("+f(sum*1000/duration)+" mv/s) (using "+parallelism+" thread(s))");
+				out("perf: "+f(sum)+(params.isLegal()?" ":" pseudo-")+"legal moves in "+f(duration)+"ms ("+f(sum*1000/duration)+" mv/s) (using "+params.getParallelism()+" thread(s) and "+(params.isPlayLeaves()||!params.isLegal()?"":"not ")+"playing leave moves)");
 			} finally {
 				timer.cancel();
 			}
-			
 		}, test::cancel);
 	}
 	
@@ -315,13 +320,13 @@ public class UCI implements Runnable {
 		return Collections.emptyList();
 	}
 
-	protected void doEngine(String[] tokens) {
-		if (tokens.length==0) {
+	protected void doEngine(Deque<String> tokens) {
+		if (tokens.isEmpty()) {
 			out(ENGINE_CMD+" "+engine.getId());
 			engines.keySet().stream().filter(engineId -> !engineId.equals(engine.getId())).forEach(engineId -> out(ENGINE_CMD+" "+engineId));
 			return;
 		}
-		final String engineId = tokens[0];
+		final String engineId = tokens.peek();
 		final Engine newEngine = engines.get(engineId);
 		if (newEngine!=null) {
 			if (newEngine.equals(this.engine)) {
@@ -362,14 +367,14 @@ public class UCI implements Runnable {
 				backTasks.close();
 				break;
 			}
-			final String[] tokens = command.split(" ");
-			if (!command.isEmpty() && tokens.length>0) {
-				final Consumer<String[]> executor = executors.get(tokens[0]);
+			final Deque<String> tokens = new LinkedList<>(Arrays.asList(command.split(" ")));
+			if (!command.isEmpty() && !tokens.isEmpty()) {
+				final Consumer<Deque<String>> executor = executors.get(tokens.pop());
 				if (executor==null) {
 					debug("unknown command");
 				} else {
 					try {
-						executor.accept(Arrays.copyOfRange(tokens, 1, tokens.length));
+						executor.accept(tokens);
 					} catch (RuntimeException e) {
 						out(e,0);
 					}
