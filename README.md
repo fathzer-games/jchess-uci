@@ -49,7 +49,7 @@ It also can be used to test move generator's performance as it outputs the numbe
   - **This command is optional**, only engines that implement *com.fathzer.jchess.uci.TestableMoveGeneratorSupplier* interface support it.
   - **This command requires the *com.fathzer.jchess.uci.UCI.readTestData()* method to be overridden** in order to return a non empty test data set.  
   A way to easily do that is to add the [com.fathzer::jchess-perft-dataset](https://central.sonatype.com/artifact/com.fathzer/jchess-perft-dataset) artifact to your classpath, then override *readTestData*:  
-  ```java
+```java
 protected Collection<PerfTTestData> readTestData() {
 	try (InputStream stream = MyUCISubclass.class.getResourceAsStream("/Perft.txt")) {
 		return new PerfTParser().withStartPositionPrefix("position fen").withStartPositionCustomizer(s -> s+" 0 1").read(stream, StandardCharsets.UTF_8);
@@ -57,8 +57,8 @@ protected Collection<PerfTTestData> readTestData() {
 		throw new UncheckedIOException(e);
 	}
 }
-  ``` 
--**q** is a shortcut for standard **quit** command</li>
+``` 
+- **q** is a shortcut for standard **quit** command</li>
  
 
 ## Adding custom commands
@@ -73,4 +73,3 @@ If you want another way to exchange messages, you can subclass the UCI class and
 ## TODO
 * Verify the engine is protected against strange client behavior (like changing the position during a go request).
 * Implement support for pondering.
-* Replace UCI class description by a link to the README.
