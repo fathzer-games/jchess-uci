@@ -46,7 +46,7 @@ It also can be used to test move generator's performance as it outputs the numbe
 *playleaves* plays, when used with *legal*, the leave moves. These moves are always played when using pseudo-legal moves. *playleaves* can be replaced by the shortcut *pl*.  
 *cut* is followed by the number of seconds allowed to process the test. This number should be strictly positive. Default is Integer.MAX_VALUE.  
 **Please note:**
-  - **This command is optional**, only engines that implement *com.fathzer.jchess.uci.TestableMoveGeneratorSupplier* interface support it.
+  - **This command is optional**, only engines that implement *com.fathzer.games.perft.TestableMoveGeneratorBuilder* interface support it.
   - **This command requires the *com.fathzer.jchess.uci.UCI.readTestData()* method to be overridden** in order to return a non empty test data set.  
   A way to easily do that is to add the [com.fathzer::jchess-perft-dataset](https://central.sonatype.com/artifact/com.fathzer/jchess-perft-dataset) artifact to your classpath, then override *readTestData*:  
 ```java
