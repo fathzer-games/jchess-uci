@@ -2,6 +2,7 @@ package com.fathzer.jchess.uci;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.EOFException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -24,10 +25,11 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import com.fathzer.games.perft.TestableMoveGeneratorSupplier;
+import com.fathzer.games.MoveGenerator;
 import com.fathzer.games.perft.MoveGeneratorChecker;
 import com.fathzer.games.perft.PerfTResult;
 import com.fathzer.games.perft.PerfTTestData;
+import com.fathzer.games.perft.TestableMoveGeneratorBuilder;
 import com.fathzer.jchess.uci.option.CheckOption;
 import com.fathzer.jchess.uci.option.Option;
 import com.fathzer.jchess.uci.parameters.GoParameters;
@@ -39,7 +41,7 @@ import com.fathzer.jchess.uci.parameters.PerfTParameters;
  * <br>It does not support all UCI commands and contains some extensions. Please have a look at the project's <a href="https://github.com/fathzer-games/jchess-uci/">README</a> file.
  * @see Engine
  */
-public class UCI implements Runnable {
+public class UCI implements Runnable, AutoCloseable {
 	private static final BufferedReader IN = new BufferedReader(new InputStreamReader(System.in));
 	private static final String MOVES = "moves";
 	private static final String ENGINE_CMD = "engine";
@@ -277,8 +279,9 @@ public class UCI implements Runnable {
 	}
 	
 	protected void doPerfStat(Deque<String> tokens) {
-		if (! (getEngine() instanceof TestableMoveGeneratorSupplier)) {
+		if (! (getEngine() instanceof TestableMoveGeneratorBuilder)) {
 			debug("test is not supported by this engine");
+			return;
 		}
 		final Optional<PerfStatsParameters> params = parse(PerfStatsParameters::new, PerfStatsParameters.PARSER, tokens);
 		if (params.isPresent()) {
@@ -288,11 +291,11 @@ public class UCI implements Runnable {
 				debug("You may override readTestData to read some data");
 				return;
 			}
-			doPerfStat(testData, (TestableMoveGeneratorSupplier<?>)getEngine(), params.get());
+			doPerfStat(testData, (TestableMoveGeneratorBuilder<?,?>)getEngine(), params.get());
 		}
 	}
 
-	private <M> void doPerfStat(Collection<PerfTTestData> testData, TestableMoveGeneratorSupplier<M> engine, PerfStatsParameters params) {
+	private <M, B extends MoveGenerator<M>> void doPerfStat(Collection<PerfTTestData> testData, TestableMoveGeneratorBuilder<M, B> engine, PerfStatsParameters params) {
 		final MoveGeneratorChecker test = new MoveGeneratorChecker(testData);
 		test.setErrorManager(e-> out(e,0));
 		test.setCountErrorManager(e -> out("Error for "+e.getStartPosition()+" expected "+e.getExpectedCount()+" got "+e.getActualCount()));
@@ -364,7 +367,6 @@ public class UCI implements Runnable {
 			final String command=getNextCommand();
 	    	log(">",command);
 			if ("quit".equals(command) || "q".equals(command)) {
-				backTasks.close();
 				break;
 			}
 			final Deque<String> tokens = new LinkedList<>(Arrays.asList(command.split(" ")));
@@ -419,14 +421,13 @@ public class UCI implements Runnable {
 	 */
 	protected String getNextCommand() {
 		String line;
-	    if (System.console() != null) {
-	        line = System.console().readLine();
-	    } else {
-		    try {
-		    	line = IN.readLine();
-		    } catch (IOException e) {
-		    	throw new UncheckedIOException(e);
-		    }
+	    try {
+	        line = System.console() == null ? IN.readLine() : System.console().readLine();
+	        if (line==null) {
+	        	throw new EOFException("End of system input has been reached");
+	        }
+	    } catch (IOException e) {
+	    	throw new UncheckedIOException(e);
 	    }
     	return line.trim();
 	}
@@ -448,5 +449,10 @@ public class UCI implements Runnable {
 			System.out.print("info string ");
 			System.out.println(message.toString());
 		}
+	}
+
+	@Override
+	public void close() {
+		backTasks.close();
 	}
 }

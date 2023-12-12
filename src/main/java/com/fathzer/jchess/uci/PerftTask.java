@@ -5,7 +5,7 @@ import java.util.function.Supplier;
 import com.fathzer.games.MoveGenerator;
 import com.fathzer.games.perft.PerfT;
 import com.fathzer.games.perft.PerfTResult;
-import com.fathzer.games.util.ContextualizedExecutor;
+import com.fathzer.games.util.exec.ContextualizedExecutor;
 import com.fathzer.jchess.uci.parameters.PerfTParameters;
 
 class PerftTask<M> extends LongRunningTask<PerfTResult<M>> {
@@ -29,7 +29,7 @@ class PerftTask<M> extends LongRunningTask<PerfTResult<M>> {
 					this.perft.setPlayLeaves(false);
 				}
 			}
-			return perft.divide(params.getDepth(), engine::get);
+			return perft.divide(params.getDepth(), engine.get());
 		}
 	}
 
