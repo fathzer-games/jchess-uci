@@ -15,7 +15,10 @@ Let say this implementation class is **MyEngine**.
 ```java
 // Create your engine
 final Engine = new MyEngine();
-new UCI(engine).run();
+// Launch UCI interface
+try (UCI uci = new UCI(engine)) {
+  uci.run();
+}
 ```
 
 That's all!
