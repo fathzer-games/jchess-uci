@@ -275,7 +275,7 @@ public class UCI implements Runnable, AutoCloseable {
 	}
 	
 	private <M> String toString(M move) {
-		return (getEngine() instanceof MoveToUCIConverter) ? ((MoveToUCIConverter<M>)engine).toUCI(move) : move.toString();
+		return (getEngine() instanceof MoveToUCIConverter) ? ((MoveToUCIConverter<M>)engine).toUCI(move).toString() : move.toString();
 	}
 	
 	protected void doPerfStat(Deque<String> tokens) {
