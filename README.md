@@ -74,5 +74,6 @@ If you want another way to exchange messages, you can subclass the UCI class and
 
 
 ## TODO
+* Make games-core optional. It would implies to split UCI into two classes, one with the strict UCI command set, and a subclass that adds PerfT related things.
 * Verify the engine is protected against strange client behavior (like changing the position during a go request).
 * Implement support for pondering.
