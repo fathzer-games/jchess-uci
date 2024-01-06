@@ -36,7 +36,7 @@ public interface Engine {
 		// Does nothing by default
 	}
 	/** Gets the options supported by the engine.
-	 * <br>This method is called once during the engine instanciation.
+	 * <br>This method is called once during the engine instantiation.
 	 * <br>The default implementation returns an empty array.
 	 * @return An option array.
 	 * <br>Please note that there's no need to send the UCI_Chess960 if chess960 is supported. This option will be automatically added if {@link #isChess960Supported()} returns true.
@@ -62,17 +62,4 @@ public interface Engine {
 	 * @return A long running task able to compute the engine's move.
 	 */
 	LongRunningTask<BestMoveReply> go(GoParameters params);
-	
-	/** Returns a string representation of the board.
-	 * <br>The representation is totally free. The default implementation returns the fen representation.
-	 * @return A string representing the chess board.
-	 */
-	default String getBoardAsString() {
-		final String fen = getFEN();
-		return fen == null ? "no position defined" : fen;
-	}
-	/** Returns the <a href="https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation">FEN</a> representation of the board.
-	 * @return a string representing the chess board. Null if no position were defined
-	 */
-	String getFEN();
 }

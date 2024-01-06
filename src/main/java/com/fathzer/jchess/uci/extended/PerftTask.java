@@ -1,4 +1,4 @@
-package com.fathzer.jchess.uci;
+package com.fathzer.jchess.uci.extended;
 
 import java.util.function.Supplier;
 
@@ -6,6 +6,7 @@ import com.fathzer.games.MoveGenerator;
 import com.fathzer.games.perft.PerfT;
 import com.fathzer.games.perft.PerfTResult;
 import com.fathzer.games.util.exec.ContextualizedExecutor;
+import com.fathzer.jchess.uci.LongRunningTask;
 import com.fathzer.jchess.uci.parameters.PerfTParameters;
 
 class PerftTask<M> extends LongRunningTask<PerfTResult<M>> {
