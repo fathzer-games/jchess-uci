@@ -7,35 +7,24 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
-import java.text.NumberFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import com.fathzer.games.MoveGenerator;
-import com.fathzer.games.perft.MoveGeneratorChecker;
-import com.fathzer.games.perft.PerfTResult;
-import com.fathzer.games.perft.PerfTTestData;
-import com.fathzer.games.perft.TestableMoveGeneratorBuilder;
 import com.fathzer.jchess.uci.option.CheckOption;
 import com.fathzer.jchess.uci.option.Option;
 import com.fathzer.jchess.uci.parameters.GoParameters;
 import com.fathzer.jchess.uci.parameters.Parser;
-import com.fathzer.jchess.uci.parameters.PerfStatsParameters;
-import com.fathzer.jchess.uci.parameters.PerfTParameters;
 
 /** A class that implements a subset of the <a href="http://wbec-ridderkerk.nl/html/UCIProtocol.html">UCI protocol</a>.
  * <br>It does not support all UCI commands and contains some extensions. Please have a look at the project's <a href="https://github.com/fathzer-games/jchess-uci/">README</a> file.
@@ -47,7 +36,8 @@ public class UCI implements Runnable, AutoCloseable {
 	private static final String ENGINE_CMD = "engine";
 	private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.nnnnnnnn");
 	
-	private Engine engine;
+	protected Engine engine;
+	protected boolean isPositionSet;
 	private final Map<String, Consumer<Deque<String>>> executors = new HashMap<>();
 	private final Map<String, Engine> engines = new HashMap<>();
 	
@@ -69,10 +59,7 @@ public class UCI implements Runnable, AutoCloseable {
 		addCommand(this::doPosition, "position");
 		addCommand(this::doGo, "go");
 		addCommand(this::doStop, "stop");
-		addCommand(this::doDisplay, "d");
-		addCommand(this::doPerft, "perft");
 		addCommand(this::doEngine,ENGINE_CMD);
-		addCommand(this::doPerfStat,"test");
 		if (System.console()!=null) {
 			log(false, "Input from System.console()");
 		} else {
@@ -179,6 +166,7 @@ public class UCI implements Runnable, AutoCloseable {
 		log("Setting board to FEN",fen);
 		getEngine().setStartPosition(fen);
 		tokens.stream().dropWhile(t->!MOVES.equals(t)).skip(1).forEach(this::doMove);
+		isPositionSet = true;
 	}
 	
 	private void doMove(String move) {
@@ -197,7 +185,7 @@ public class UCI implements Runnable, AutoCloseable {
 	}
 
 	protected void doGo(Deque<String> tokens) {
-		if (engine.getFEN()==null) {
+		if (!isPositionSet) {
 			debug("No position defined");
 		} else {
 			final Optional<GoParameters> goOptions = parse(GoParameters::new, GoParameters.PARSER, tokens);
@@ -211,7 +199,7 @@ public class UCI implements Runnable, AutoCloseable {
 		}
 	}
 
-	private <T> Optional<T> parse(Supplier<T> builder, Parser<T> parser, Deque<String> tokens) {
+	protected <T> Optional<T> parse(Supplier<T> builder, Parser<T> parser, Deque<String> tokens) {
 		try {
 			final T result = builder.get();
 			final List<String> ignored = parser.parse(result, tokens);
@@ -231,98 +219,6 @@ public class UCI implements Runnable, AutoCloseable {
 		}
 	}
 	
-	protected void doDisplay(Deque<String> tokens) {
-		if (tokens.isEmpty()) {
-			out(getEngine().getBoardAsString());
-		} else if (tokens.size()==1 && "fen".equals(tokens.peek())) {
-			out(getEngine().getFEN());
-		} else {
-			debug("Unknown display options "+Arrays.asList(tokens));
-		}
-	}
-	
-	protected <M> void doPerft(Deque<String> tokens) {
-		if (engine.getFEN()==null) {
-			debug("No position defined");
-			return;
-		}
-		if (! (engine instanceof MoveGeneratorSupplier)) {
-			debug("perft is not supported by this engine");
-			return;
-		}
-		final Optional<PerfTParameters> params = parse(PerfTParameters::new, PerfTParameters.PARSER, tokens);
-		if (params.isPresent()) {
-			@SuppressWarnings("unchecked")
-			final LongRunningTask<PerfTResult<M>> task = new PerftTask<>((MoveGeneratorSupplier<M>)engine, params.get());
-			doBackground(() -> doPerft(task, params.get()), task::stop);
-		}
-	}
-
-	private <M> void doPerft(LongRunningTask<PerfTResult<M>> task, PerfTParameters params) {
-		final long start = System.currentTimeMillis(); 
-		final PerfTResult<M> result = task.get();
-
-		final long duration = System.currentTimeMillis() - start;
-		if (result.isInterrupted()) {
-			out("perft process has been interrupted");
-		} else {
-			result.getDivides().stream().forEach(d -> out (toString(d.getMove())+": "+d.getCount()));
-			final long sum = result.getNbLeaves();
-			out("perft "+f(sum)+" leaves in "+f(duration)+"ms ("+f(sum*1000/duration)+" leaves/s) (using "+params.getParallelism()+" thread(s))");
-			out("perft "+f(result.getNbMovesFound())+" "+(params.isLegal()?"":"peudo-")+"legal moves generated ("+f(result.getNbMovesFound()*1000/duration)+" mv/s). " + 
-				f(result.getNbMovesMade())+" moves made ("+f(result.getNbMovesMade()*1000/duration)+" mv/s)");
-		}
-	}
-	
-	private <M> String toString(M move) {
-		return (getEngine() instanceof MoveToUCIConverter) ? ((MoveToUCIConverter<M>)engine).toUCI(move).toString() : move.toString();
-	}
-	
-	protected void doPerfStat(Deque<String> tokens) {
-		if (! (getEngine() instanceof TestableMoveGeneratorBuilder)) {
-			debug("test is not supported by this engine");
-			return;
-		}
-		final Optional<PerfStatsParameters> params = parse(PerfStatsParameters::new, PerfStatsParameters.PARSER, tokens);
-		if (params.isPresent()) {
-			final Collection<PerfTTestData> testData = readTestData();
-			if (testData.isEmpty()) {
-				out("No test data available");
-				debug("You may override readTestData to read some data");
-				return;
-			}
-			doPerfStat(testData, (TestableMoveGeneratorBuilder<?,?>)getEngine(), params.get());
-		}
-	}
-
-	private <M, B extends MoveGenerator<M>> void doPerfStat(Collection<PerfTTestData> testData, TestableMoveGeneratorBuilder<M, B> engine, PerfStatsParameters params) {
-		final MoveGeneratorChecker test = new MoveGeneratorChecker(testData);
-		test.setErrorManager(e-> out(e,0));
-		test.setCountErrorManager(e -> out("Error for "+e.getStartPosition()+" expected "+e.getExpectedCount()+" got "+e.getActualCount()));
-		final TimerTask task = new TimerTask() {
-			@Override
-			public void run() {
-				doStop(null);
-			}
-		};
-		doBackground(() -> {
-			final Timer timer = new Timer();
-			timer.schedule(task, 1000L*params.getCutTime());
-			try {
-				final long start = System.currentTimeMillis();
-				long sum = test.run(engine, params.getDepth(), params.isLegal() , params.isPlayLeaves(), params.getParallelism());
-				final long duration = System.currentTimeMillis() - start;
-				out("perf: "+f(sum)+(params.isLegal()?" ":" pseudo-")+"legal moves in "+f(duration)+"ms ("+f(sum*1000/duration)+" mv/s) (using "+params.getParallelism()+" thread(s) and "+(params.isPlayLeaves()||!params.isLegal()?"":"not ")+"playing leave moves)");
-			} finally {
-				timer.cancel();
-			}
-		}, test::cancel);
-	}
-	
-	protected Collection<PerfTTestData> readTestData() {
-		return Collections.emptyList();
-	}
-
 	protected void doEngine(Deque<String> tokens) {
 		if (tokens.isEmpty()) {
 			out(ENGINE_CMD+" "+engine.getId());
@@ -335,9 +231,9 @@ public class UCI implements Runnable, AutoCloseable {
 			if (newEngine.equals(this.engine)) {
 			 return;	
 			}
-			final String pos = getEngine().getFEN();
-			if (pos!=null) {
-				newEngine.setStartPosition(pos);
+			if (isPositionSet) {
+				debug("position is cleared by engine change");
+				isPositionSet = false;
 			}
 			this.engine = newEngine;
 			buildOptionsTable(newEngine.getOptions());
@@ -354,10 +250,6 @@ public class UCI implements Runnable, AutoCloseable {
 	private void buildOptionsTable(Option<?>[] options) {
 		this.options = new HashMap<>();
 		Arrays.stream(options).forEach(o -> this.options.put(o.getName(), o));
-	}
-
-	private static String f(long num) {
-		return NumberFormat.getInstance().format(num);
 	}
 
 	@Override

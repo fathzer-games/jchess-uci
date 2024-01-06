@@ -1,4 +1,4 @@
-package com.fathzer.jchess.uci;
+package com.fathzer.jchess.uci.extended;
 
 import java.util.function.Supplier;
 
