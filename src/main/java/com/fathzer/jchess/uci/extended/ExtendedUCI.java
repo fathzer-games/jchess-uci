@@ -132,7 +132,6 @@ public class ExtendedUCI extends UCI {
 	protected Collection<PerfTTestData> readTestData() {
 		return Collections.emptyList();
 	}
-	
 
 	private static String f(long num) {
 		return NumberFormat.getInstance().format(num);

@@ -31,7 +31,8 @@ It does not directly support the following commands (but you can add them in an 
 - **register**: As a promoter of open source free sofware, I will not encourage you to develop software that requires registration.
 - **ponderhit** is not yet implemented.
 
-It also does not recognize commands starting with unknown token (to be honest, it's not very hard to implement but seemed a very bad, error prone, idea to me).  
+It also does not recognize commands starting with unknown token (to be honest, it's not very hard to implement but seemed a very bad, error prone, idea to me).
+
 The following extensions are implemented in **UCI** class:
 - It can accept different engines, that can be selected using the **engine** command. You can view these engines as plugins.  
 **engine** [*engineId*] Lists the available engines id or change the engine if *engineId* is provided.
@@ -46,7 +47,7 @@ The **ExtendedUCI** class implements the following extensions in addition of the
 *legal* uses legal moves from the move generator instead of the default pseudo-legal moves. *legal* can be replaced by the shortcut *l*.  
 *playleaves* plays, when used with *legal*, the leave moves. These moves are always played when using pseudo-legal moves. *playleaves* can be replaced by the shortcut *pl*.     
 **Please note this command is optional**, only engines that implement *com.fathzer.jchess.uci.extended.MoveGeneratorSupplier* interface support it.  
-If the engine implements the **com.fathzer.jchess.uci.extended.MoveToUCIConverter** interface, the divide displays moves in UCI format, otherwise the move's toString method is used.
+If the engine implements the *com.fathzer.jchess.uci.extended.MoveToUCIConverter* interface, the divide displays moves in UCI format, otherwise the move's toString method is used.
 - **test** *depth* [threads *nb*] [legal] [playleaves] [cut *s*] runs a move generator test based on [perft](https://www.chessprogramming.org/Perft).  
 It also can be used to test move generator's performance as it outputs the number of moves generated per second.  
 *depth* is mandatory and is the search depth of perft algorithm. It should be strictly positive.  
@@ -56,7 +57,7 @@ It also can be used to test move generator's performance as it outputs the numbe
 *cut* is followed by the number of seconds allowed to process the test. This number should be strictly positive. Default is Integer.MAX_VALUE.  
 **Please note:**
   - **This command is optional**, only engines that implement *com.fathzer.games.perft.TestableMoveGeneratorBuilder* interface support it.
-  - **This command requires the *com.fathzer.jchess.uci.UCI.readTestData()* method to be overridden** in order to return a non empty test data set.  
+  - **This command requires the *com.fathzer.jchess.uci.extended.ExtendedUCI.readTestData()* method to be overridden** in order to return a non empty test data set.  
   A way to easily do that is to add the [com.fathzer::jchess-perft-dataset](https://central.sonatype.com/artifact/com.fathzer/jchess-perft-dataset) artifact to your classpath, then override *readTestData*:  
 ```java
 protected Collection<PerfTTestData> readTestData() {
@@ -70,13 +71,15 @@ protected Collection<PerfTTestData> readTestData() {
  
 
 ## Adding custom commands
-Override the **com.fathzer.jchess.uci.UCI** or ****com.fathzer.jchess.uci.extended.ExtendedUCI** classes and use its *addCommand* method to add your own custom commands.  
+Override the **com.fathzer.jchess.uci.UCI** or **com.fathzer.jchess.uci.extended.ExtendedUCI** classes and use its *addCommand* method to add your own custom commands.  
 Then instantiate your UCI subclass and launch its **run** method.
 
 ## Get rid of System.out and System.in
 UCI protocol uses standard input and output console to communicate which is effective ... but not really modern.  
 If you want another way to exchange messages, you can subclass the UCI class and override the *getNextCommand* and/or the *out* (and *debug* if you send debug messages) methods.
 
+## Shrinking (a little) your aritifacts
+If you do not use the *com.fathzer.jchess.uci.extended* and *com.fathzer.jchess.uci.helper* packages, you can exclude the *com.fathzer:games-core* dependency. 
 
 ## TODO
 * Verify the engine is protected against strange client behavior (like changing the position during a go request).
