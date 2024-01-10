@@ -71,12 +71,14 @@ public class SpeedTest<M, B extends MoveGenerator<M>> {
 		final DeepeningPolicy policy = uciEngine.getEngine().getDeepeningPolicy();
 		int size = policy.getSize();
 		int accuracy = policy.getAccuracy();
+		int depth = policy.getDepth();
 		String fen = (uciEngine.isPositionSet() && uciEngine instanceof Displayable) ? ((Displayable)uciEngine).getFEN() : null;
 		try {
 			final long start = System.currentTimeMillis();
 			doSpeedTest();
 			return System.currentTimeMillis()-start;
 		} finally {
+			policy.setDepth(depth);
 			policy.setSize(size);
 			policy.setAccuracy(accuracy);
 			if (fen!=null) {
@@ -89,6 +91,7 @@ public class SpeedTest<M, B extends MoveGenerator<M>> {
 	private void doSpeedTest() {
 		final DeepeningPolicy policy = uciEngine.getEngine().getDeepeningPolicy();
 		policy.setSize(Integer.MAX_VALUE);
+		policy.setDepth(8);
 		
 		// 3 possible Mats in 1 with whites
 		Result<M> mv = fill("7k/5p2/5PQN/5PPK/6PP/8/8/8 w - - 6 5");
