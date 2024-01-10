@@ -1,5 +1,8 @@
 package com.fathzer.jchess.uci;
 
+import java.util.Collections;
+import java.util.List;
+
 import com.fathzer.jchess.uci.option.Option;
 import com.fathzer.jchess.uci.parameters.GoParameters;
 
@@ -38,12 +41,12 @@ public interface Engine {
 	/** Gets the options supported by the engine.
 	 * <br>This method is called once during the engine instantiation.
 	 * <br>The default implementation returns an empty array.
-	 * @return An option array.
+	 * @return An option list.
 	 * <br>Please note that there's no need to send the UCI_Chess960 if chess960 is supported. This option will be automatically added if {@link #isChess960Supported()} returns true.
 	 */
-	default Option<?>[] getOptions() {
+	default List<Option<?>> getOptions() {
 		// By default engine has no option
-		return new Option[0];
+		return Collections.emptyList();
 	}
 	/** Sets the start position.
 	 * @param fen The start position in the fen format.
@@ -62,4 +65,9 @@ public interface Engine {
 	 * @return A long running task able to compute the engine's move.
 	 */
 	LongRunningTask<BestMoveReply> go(GoParameters params);
+	
+	/** Tests whether a position is set.
+	 * @return true if a position is set
+	 */
+	boolean isPositionSet();
 }

@@ -95,7 +95,7 @@ class OptionTest {
 		final AtomicInteger ref = new AtomicInteger();
 		final String name = "Selectivity";
 		final int defaultValue = 2;
-		SpinOption s = new SpinOption(name, x->{ref.set(x);}, defaultValue, 0, 4);
+		IntegerSpinOption s = new IntegerSpinOption(name, x->{ref.set(x);}, defaultValue, 0, 4);
 		assertEquals(defaultValue, ref.get());
 		assertEquals(defaultValue, s.getValue());
 		final int value = 3;
@@ -103,10 +103,10 @@ class OptionTest {
 		assertEquals(value, ref.get());
 		assertEquals(value, s.getValue());
 		assertEquals("option name "+name+" type spin default "+defaultValue+" min 0 max 4",s.toUCI());
-		assertThrows(IllegalArgumentException.class, () -> new SpinOption(null, x->{}, defaultValue, 0, 4));
-		assertThrows(IllegalArgumentException.class, () -> new SpinOption(name, null, defaultValue, 0, 4));
-		assertThrows(IllegalArgumentException.class, () -> new SpinOption(name, x->{}, -1, 0, 4));
-		assertThrows(IllegalArgumentException.class, () -> new SpinOption(name, x->{}, 2, 4, 0));
+		assertThrows(IllegalArgumentException.class, () -> new IntegerSpinOption(null, x->{}, defaultValue, 0, 4));
+		assertThrows(IllegalArgumentException.class, () -> new IntegerSpinOption(name, null, defaultValue, 0, 4));
+		assertThrows(IllegalArgumentException.class, () -> new IntegerSpinOption(name, x->{}, -1, 0, 4));
+		assertThrows(IllegalArgumentException.class, () -> new IntegerSpinOption(name, x->{}, 2, 4, 0));
 		assertThrows(IllegalArgumentException.class, () -> s.setValue(null));
 		assertThrows(IllegalArgumentException.class, () -> s.setValue("8"));
 	}

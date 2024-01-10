@@ -31,7 +31,7 @@ public class ExtendedUCI extends UCI {
 	}
 	
 	protected void doDisplay(Deque<String> tokens) {
-		if (!isPositionSet) {
+		if (!engine.isPositionSet()) {
 			debug(NO_POSITION_DEFINED);
 			return;
 		}
@@ -51,7 +51,7 @@ public class ExtendedUCI extends UCI {
 	}
 
 	protected <M> void doPerft(Deque<String> tokens) {
-		if (!isPositionSet) {
+		if (!engine.isPositionSet()) {
 			debug(NO_POSITION_DEFINED);
 			return;
 		}

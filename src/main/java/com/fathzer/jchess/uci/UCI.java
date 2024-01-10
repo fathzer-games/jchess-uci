@@ -37,7 +37,6 @@ public class UCI implements Runnable, AutoCloseable {
 	private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.nnnnnnnn");
 	
 	protected Engine engine;
-	protected boolean isPositionSet;
 	private final Map<String, Consumer<Deque<String>>> executors = new HashMap<>();
 	private final Map<String, Engine> engines = new HashMap<>();
 	
@@ -166,7 +165,6 @@ public class UCI implements Runnable, AutoCloseable {
 		log("Setting board to FEN",fen);
 		getEngine().setStartPosition(fen);
 		tokens.stream().dropWhile(t->!MOVES.equals(t)).skip(1).forEach(this::doMove);
-		isPositionSet = true;
 	}
 	
 	private void doMove(String move) {
@@ -185,7 +183,7 @@ public class UCI implements Runnable, AutoCloseable {
 	}
 
 	protected void doGo(Deque<String> tokens) {
-		if (!isPositionSet) {
+		if (!engine.isPositionSet()) {
 			debug("No position defined");
 		} else {
 			final Optional<GoParameters> goOptions = parse(GoParameters::new, GoParameters.PARSER, tokens);
@@ -231,9 +229,8 @@ public class UCI implements Runnable, AutoCloseable {
 			if (newEngine.equals(this.engine)) {
 			 return;	
 			}
-			if (isPositionSet) {
+			if (engine.isPositionSet()) {
 				debug("position is cleared by engine change");
-				isPositionSet = false;
 			}
 			this.engine = newEngine;
 			buildOptionsTable(newEngine.getOptions());
@@ -247,9 +244,9 @@ public class UCI implements Runnable, AutoCloseable {
 		return engine;
 	}
 	
-	private void buildOptionsTable(Option<?>[] options) {
+	private void buildOptionsTable(List<Option<?>> options) {
 		this.options = new HashMap<>();
-		Arrays.stream(options).forEach(o -> this.options.put(o.getName(), o));
+		options.forEach(o -> this.options.put(o.getName(), o));
 	}
 
 	@Override

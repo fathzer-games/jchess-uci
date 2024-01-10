@@ -2,21 +2,24 @@ package com.fathzer.jchess.uci.option;
 
 import java.util.function.Consumer;
 
-public class SpinOption extends Option<Integer> {
-	private final int defaultValue;
-	private final int min;
-	private final int max;
+abstract class SpinOption<N extends Number> extends Option<N> {
+	private final N defaultValue;
+	private final N min;
+	private final N max;
 	
-	public SpinOption(String name, Consumer<Integer> trigger, int defaultValue, int min, int max) {
+	protected SpinOption(String name, Consumer<N> trigger, N defaultValue, N min, N max) {
 		super(name, trigger);
-		if (defaultValue<min || defaultValue>max) {
-			throw new IllegalArgumentException();
+		if (compare(defaultValue, min)<0 || compare(defaultValue, max)>0) {
+			throw new IllegalArgumentException("default ("+defaultValue+") is not between min ("+min+") and max("+max+")");
 		}
 		this.defaultValue = defaultValue;
 		setCastedValue(defaultValue);
 		this.min = min;
 		this.max = max;
 	}
+	
+	protected abstract N parse(String value);
+	protected abstract int compare(N first, N other);
 
 	@Override
 	Type getType() {
@@ -28,8 +31,8 @@ public class SpinOption extends Option<Integer> {
 		if (value==null) {
 			throw new IllegalArgumentException();
 		}
-		final int val = Integer.parseInt(value);
-		if (val>max || val<min) {
+		final N val = parse(value);
+		if (compare(val, max)>0 || compare(val, min)<0) {
 			throw new IllegalArgumentException();
 		}
 		setCastedValue(val);
