@@ -5,11 +5,11 @@ import java.util.function.Supplier;
 import com.fathzer.games.MoveGenerator;
 import com.fathzer.games.ai.evaluation.Evaluator;
 
-public class UCIEvaluatorConfiguration<M, B extends MoveGenerator<M>> {
+public class EvaluatorConfiguration<M, B extends MoveGenerator<M>> {
 	private final String name;
 	private final Supplier<Evaluator<M, B>> evaluatorBuilder;
 	
-	public UCIEvaluatorConfiguration(String name, Supplier<Evaluator<M, B>> evaluatorBuilder) {
+	public EvaluatorConfiguration(String name, Supplier<Evaluator<M, B>> evaluatorBuilder) {
 		if (name==null || evaluatorBuilder==null) {
 			throw new IllegalArgumentException();
 		}
@@ -21,7 +21,7 @@ public class UCIEvaluatorConfiguration<M, B extends MoveGenerator<M>> {
 		return name;
 	}
 
-	public Supplier<Evaluator<M, B>> getEvaluatorBuilder() {
+	public Supplier<Evaluator<M, B>> getBuilder() {
 		return evaluatorBuilder;
 	}
 }

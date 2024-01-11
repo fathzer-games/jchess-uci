@@ -58,10 +58,10 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 		this.evaluatorBuilders = new HashMap<>();
 	}
 	
-	protected void setEvaluators(List<UCIEvaluatorConfiguration<M, B>> evaluators) {
+	protected void setEvaluators(List<EvaluatorConfiguration<M, B>> evaluators) {
 		evaluatorBuilders.clear();
 		defaultEvaluator = evaluators.isEmpty() ? null : evaluators.get(0).getName();
-		evaluators.forEach(e -> evaluatorBuilders.put(e.getName(), e.getEvaluatorBuilder()));
+		evaluators.forEach(e -> evaluatorBuilders.put(e.getName(), e.getBuilder()));
 	}
 	
 	@Override
