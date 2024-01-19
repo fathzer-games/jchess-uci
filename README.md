@@ -39,6 +39,8 @@ The following extensions are implemented in **UCI** class:
 - **q** is a shortcut for standard **quit** command
 
 The **ExtendedUCI** class implements the following extensions in addition of the standard commands:
+- **block** Waits until the current background task (for instance a go command) is ended before reading next command on input.  
+**Warning:** Be cautious with this command, once the input reading is blocked there's no way to stop the current background task. Typically, the *stop* command will no work.
 - **d** [*fen*] displays a textual representation of the game. If the command is followed by *fen*, the command displays the representation of a game in the [Forsyth–Edwards Notation](https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation).  
 **Please note this command is optional**, only engines that implement *com.fathzer.jchess.uci.extended.Displayable* interface support it.
 - **perft** *depth* [threads *nb*] [legal] [playleaves] runs [perft](https://www.chessprogramming.org/Perft) test and displays the divide result.  
