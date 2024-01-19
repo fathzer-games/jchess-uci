@@ -176,10 +176,13 @@ public class UCI implements Runnable, AutoCloseable {
 		return tokens.stream().takeWhile(t -> !MOVES.equals(t)).collect(Collectors.joining(" "));
 	}
 	
-	protected void doBackground(Runnable task, Runnable stopper) {
-		if (!backTasks.doBackground(task, stopper)) {
-			debug("Engine is already working");
-		}
+	/** Launches a task on the background thread.
+	 * @param task The task to launch
+	 * @param stopper A runnable that stops the task when invoked (it is user by the <i>stop</i> command in order to stop the task. 
+	 * @return true if the task is launched, false if another task is already running.
+	 */
+	protected boolean doBackground(Runnable task, Runnable stopper) {
+		return backTasks.doBackground(task, stopper);
 	}
 
 	protected void doGo(Deque<String> tokens) {
@@ -189,10 +192,13 @@ public class UCI implements Runnable, AutoCloseable {
 			final Optional<GoParameters> goOptions = parse(GoParameters::new, GoParameters.PARSER, tokens);
 			if (goOptions.isPresent()) {
 				final LongRunningTask<BestMoveReply> task = engine.go(goOptions.get());
-				doBackground(() -> {
+				final boolean started = doBackground(() -> {
 					final BestMoveReply reply = task.get();
 					out("bestmove "+reply.getMove()+(reply.getPonderMove().isEmpty()?"":(" "+reply.getPonderMove().get())));
 				}, task::stop);
+				if (!started) {
+					debug("Engine is already working");
+				}
 			}
 		}
 	}

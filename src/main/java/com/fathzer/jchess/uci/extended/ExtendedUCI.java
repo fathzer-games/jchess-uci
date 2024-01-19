@@ -28,6 +28,7 @@ public class ExtendedUCI extends UCI {
 		addCommand(this::doPerft, "perft");
 		addCommand(this::doPerfStat,"test");
 		addCommand(this::doDisplay, "d");
+		addCommand(this::wait, "block");
 	}
 	
 	protected void doDisplay(Deque<String> tokens) {
@@ -63,7 +64,13 @@ public class ExtendedUCI extends UCI {
 		if (params.isPresent()) {
 			@SuppressWarnings("unchecked")
 			final LongRunningTask<PerfTResult<M>> task = new PerftTask<>((MoveGeneratorSupplier<M>)engine, params.get());
-			doBackground(() -> doPerft(task, params.get()), task::stop);
+			background(() -> doPerft(task, params.get()), task::stop);
+		}
+	}
+	
+	private void background(Runnable task, Runnable stopper) {
+		if (!doBackground(task, stopper)) {
+			debug("Engine is already working");
 		}
 	}
 
@@ -115,7 +122,7 @@ public class ExtendedUCI extends UCI {
 				doStop(null);
 			}
 		};
-		doBackground(() -> {
+		background(() -> {
 			final Timer timer = new Timer();
 			timer.schedule(task, 1000L*params.getCutTime());
 			try {
@@ -135,5 +142,21 @@ public class ExtendedUCI extends UCI {
 
 	private static String f(long num) {
 		return NumberFormat.getInstance().format(num);
+	}
+	
+	
+	private void wait(Deque<String> args) {
+		while (true) {
+			if (doBackground(()->{}, ()->{})) {
+				return;
+			}
+			try {
+				synchronized (this) {
+					wait(100);
+				}
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
+		}
 	}
 }
