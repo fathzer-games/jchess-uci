@@ -80,8 +80,11 @@ Then instantiate your UCI subclass and launch its **run** method.
 UCI protocol uses standard input and output console to communicate which is effective ... but not really modern.  
 If you want another way to exchange messages, you can subclass the UCI class and override the *getNextCommand* and/or the *out* (and *debug* if you send debug messages) methods.
 
-## Shrinking (a little) your aritifacts
-If you do not use the *com.fathzer.jchess.uci.extended* and *com.fathzer.jchess.uci.helper* packages, you can exclude the *com.fathzer:games-core* dependency. 
+## Shrinking (a little) your artifacts
+If you do not use the *com.fathzer.jchess.uci.extended* and *com.fathzer.jchess.uci.helper* packages, you can exclude the *com.fathzer:games-core* dependency.
+
+## Known bugs
+- The *searchmoves* option of the go command is ignored by **AbstractEngine**
 
 ## TODO
 * Verify the engine is protected against strange client behavior (like changing the position during a go request).

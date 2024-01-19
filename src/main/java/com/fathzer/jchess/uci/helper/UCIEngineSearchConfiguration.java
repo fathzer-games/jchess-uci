@@ -1,6 +1,5 @@
 package com.fathzer.jchess.uci.helper;
 
-import com.fathzer.games.Color;
 import com.fathzer.games.MoveGenerator;
 import com.fathzer.games.ai.iterativedeepening.IterativeDeepeningEngine;
 import com.fathzer.games.ai.time.TimeManager;
@@ -40,8 +39,7 @@ public class UCIEngineSearchConfiguration<M, B extends MoveGenerator<M>> {
 		if (timeOptions.getMoveTimeMs()>0) {
 			engine.getDeepeningPolicy().setMaxTime(timeOptions.getMoveTimeMs());
 		} else {
-			final Color c = board.isWhiteToMove() ? Color.WHITE : Color.BLACK;
-			final PlayerClockData engineClock = c==Color.WHITE ? timeOptions.getWhiteClock() : timeOptions.getBlackClock();
+			final PlayerClockData engineClock = board.isWhiteToMove() ? timeOptions.getWhiteClock() : timeOptions.getBlackClock();
 			if (engineClock.getRemainingMs()>0) {
 				engine.getDeepeningPolicy().setMaxTime(getMaxTime(board, engineClock.getRemainingMs(), engineClock.getIncrementMs(), timeOptions.getMovesToGo()));
 			}
