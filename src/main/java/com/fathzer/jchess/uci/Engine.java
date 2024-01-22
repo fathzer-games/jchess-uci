@@ -19,13 +19,35 @@ public interface Engine {
 	default String getAuthor() {
 		return null;
 	}
+
 	/** Clears all data from previous game.
 	 * <br>The default implementation does nothing
 	 */
 	default void newGame() {
-		// Does nothing by default, assuming the engine do not have cached things
+		// Does nothing by default, assuming the engine doesn't cache anything.
 	}
+	/** Gets the default hash table size in MBytes.
+	 * <br>If this method returns a positive number, the <i>Hash</i> standard option is automatically added to the options list.
+	 * <br>In such a case, {@link #setHashTableSize(int)} may be called, so you should override it in order to not have the program hang at startup.
+	 * @return a positive number (the default hash table size in MBytes) if this engine supports hash table. A negative number if it does
+	 * not support hash table. 
+	 * <br>The default implementation returns -1;
+	 * @see Engine#setHashTableSize(int)
+	 */
+	default int getDefaultHashTableSize() {
+		return -1;
+	}
+	/** Sets the hash table size.
+	 * <br>The default implementation throws an UnsupportedOperationException.
+	 * <br>You should override this method if {@link #isHashTableSupported()}
+	 * @param sizeInMB The size of the hash table in MBytes 
+	 */
+	default void setHashTableSize(int sizeInMB) {
+		throw new UnsupportedOperationException();
+	}
+
 	/** Checks whether this engine supports <a href="https://en.wikipedia.org/wiki/Fischer_random_chess">Chess960</a>.
+	 * <br>If this method returns true, the <i>UCI_Chess960</i> standard option is automatically added to the options list.
 	 * @return true if chess960 is supported, false (the default) if not.
 	 */
 	default boolean isChess960Supported() {
@@ -38,6 +60,24 @@ public interface Engine {
 	default void setChess960(boolean chess960Mode) {
 		// Does nothing by default
 	}
+	
+	/** Checks whether this engine has its own opening book.
+	 * <br>If this method returns true, the <i>OwnBook</i> standard option is automatically added to the options list.
+	 * <br>In such a case, {@link #setOwnBook(boolean)} may be called, so you should override it in order to not have the program hang at startup.
+	 * @return true if the engine hasItsOwn book, false (the default) if not.
+	 * @see Engine#setOwnBook(boolean)
+	 */
+	default boolean hasOwnBook() {
+		return false;
+	}
+	/** Ask the engine to use its own opening book or not. 
+	 * @param activate true to activate the opening book. False to deactivate it.
+	 * <br>The default implementation throws an UnsupportedOperationException.
+	 */
+	default void setOwnBook(boolean activate) {
+		throw new UnsupportedOperationException();
+	}
+	
 	/** Gets the options supported by the engine.
 	 * <br>This method is called once during the engine instantiation.
 	 * <br>The default implementation returns an empty array.
@@ -48,6 +88,7 @@ public interface Engine {
 		// By default engine has no option
 		return Collections.emptyList();
 	}
+
 	/** Sets the start position.
 	 * @param fen The start position in the fen format.
 	 */

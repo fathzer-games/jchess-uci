@@ -11,6 +11,7 @@ import com.fathzer.games.MoveGenerator.MoveConfidence;
 import com.fathzer.games.ai.evaluation.Evaluator;
 import com.fathzer.games.ai.iterativedeepening.IterativeDeepeningEngine;
 import com.fathzer.games.ai.time.TimeManager;
+import com.fathzer.games.ai.transposition.TranspositionTable;
 import com.fathzer.jchess.uci.BestMoveReply;
 import com.fathzer.jchess.uci.Engine;
 import com.fathzer.jchess.uci.LongRunningTask;
@@ -44,6 +45,7 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 	private int defaultThreads;
 	private int defaultDepth;
 	private long defaultMaxTime;
+	private int ttSizeInMB;
 	
 	/** Constructor.
 	 * @param engine The internal engine to use
@@ -51,6 +53,7 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 	 */
 	protected AbstractEngine(IterativeDeepeningEngine<M, B> engine, TimeManager<B> timeManager) {
 		this.engine = engine;
+		this.ttSizeInMB = engine.getTranspositionTable().getMemorySizeMB();
 		this.defaultThreads = engine.getParallelism();
 		this.defaultDepth = engine.getDeepeningPolicy().getDepth();
 		this.defaultMaxTime = engine.getDeepeningPolicy().getMaxTime();
@@ -63,6 +66,20 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 		defaultEvaluator = evaluators.isEmpty() ? null : evaluators.get(0).getName();
 		evaluators.forEach(e -> evaluatorBuilders.put(e.getName(), e.getBuilder()));
 	}
+	
+	@Override
+	public int getDefaultHashTableSize() {
+		return ttSizeInMB;
+	}
+
+	@Override
+	public void setHashTableSize(int sizeInMB) {
+		if (engine.getTranspositionTable().getMemorySizeMB()!=sizeInMB) {
+			engine.setTranspositionTable(buildTranspositionTable(sizeInMB));
+		}
+	}
+
+	protected abstract TranspositionTable<M> buildTranspositionTable(int sizeInMB);
 	
 	@Override
 	public List<Option<?>> getOptions() {
