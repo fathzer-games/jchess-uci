@@ -39,7 +39,7 @@ public interface Engine {
 	}
 	/** Sets the hash table size.
 	 * <br>The default implementation throws an UnsupportedOperationException.
-	 * <br>You should override this method if {@link #isHashTableSupported()}
+	 * <br>You should override this method if {@link #getDefaultHashTableSize()}
 	 * @param sizeInMB The size of the hash table in MBytes 
 	 */
 	default void setHashTableSize(int sizeInMB) {
