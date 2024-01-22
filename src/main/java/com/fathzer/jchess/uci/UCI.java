@@ -22,6 +22,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import com.fathzer.jchess.uci.option.CheckOption;
+import com.fathzer.jchess.uci.option.IntegerSpinOption;
 import com.fathzer.jchess.uci.option.Option;
 import com.fathzer.jchess.uci.parameters.GoParameters;
 import com.fathzer.jchess.uci.parameters.Parser;
@@ -36,12 +37,15 @@ public class UCI implements Runnable, AutoCloseable {
 	private static final String ENGINE_CMD = "engine";
 	private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.nnnnnnnn");
 	
+	private static final String CHESS960_OPTION = "UCI_Chess960";
+	private static final String HASH_OPTION = "Hash";
+	private static final String OWN_BOOK_OPTION = "OwnBook";
+	
 	protected Engine engine;
 	private final Map<String, Consumer<Deque<String>>> executors = new HashMap<>();
 	private final Map<String, Engine> engines = new HashMap<>();
 	
 	private final BackgroundTaskManager backTasks = new BackgroundTaskManager(e -> out(e, 0));
-	private final Option<Boolean> chess960Option = new CheckOption("UCI_Chess960", b -> {if (engine!=null) engine.setChess960(b);}, false);
 	private boolean debug = Boolean.getBoolean("logToFile");
 	private boolean debugUCI = Boolean.getBoolean("debugUCI");
 	private Map<String, Option<?>> options;
@@ -49,7 +53,7 @@ public class UCI implements Runnable, AutoCloseable {
 	public UCI(Engine defaultEngine) {
 		engines.put(defaultEngine.getId(), defaultEngine);
 		this.engine = defaultEngine;
-		buildOptionsTable(defaultEngine.getOptions());
+		buildOptionsTable();
 		addCommand(this::doUCI, "uci");
 		addCommand(this::doDebug, "debug");
 		addCommand(this::doSetOption, "setoption");
@@ -98,16 +102,7 @@ public class UCI implements Runnable, AutoCloseable {
 		if (author!=null) {
 			out("id author "+author);
 		}
-		boolean hasChess960 = false;
-		for (Option<?> option : options.values()) {
-			if (chess960Option.getName().equals(option.getName())) {
-				hasChess960 = true;
-			}
-			out(option.toUCI());
-		}
-		if (engine.isChess960Supported() && !hasChess960) {
-			out(chess960Option.toUCI());
-		}
+		options.values().forEach( o -> out(o.toUCI()));
 		out("uciok");
 	}
 	
@@ -239,7 +234,7 @@ public class UCI implements Runnable, AutoCloseable {
 				debug("position is cleared by engine change");
 			}
 			this.engine = newEngine;
-			buildOptionsTable(newEngine.getOptions());
+			buildOptionsTable();
 			out(ENGINE_CMD+" "+engineId+" ok");
 		} else {
 			debug(ENGINE_CMD+" "+engineId+" is unknown");
@@ -250,9 +245,19 @@ public class UCI implements Runnable, AutoCloseable {
 		return engine;
 	}
 	
-	private void buildOptionsTable(List<Option<?>> options) {
+	private void buildOptionsTable() {
+		final List<Option<?>> engineOptions = engine.getOptions();
 		this.options = new HashMap<>();
-		options.forEach(o -> this.options.put(o.getName(), o));
+		engineOptions.forEach(o -> this.options.put(o.getName(), o));
+		if (engine.isChess960Supported()) {
+			options.computeIfAbsent(CHESS960_OPTION, k -> new CheckOption(k, engine::setChess960, false));
+		}
+		if (engine.hasOwnBook()) {
+			options.computeIfAbsent(OWN_BOOK_OPTION, k -> new CheckOption(k, engine::setOwnBook, true));
+		}
+		if (engine.getDefaultHashTableSize()>=0) {
+			options.computeIfAbsent(HASH_OPTION, k -> new IntegerSpinOption(k, engine::setHashTableSize, engine.getDefaultHashTableSize(), 1, 64*1024));
+		}
 	}
 
 	@Override
