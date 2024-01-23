@@ -7,6 +7,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
@@ -32,6 +34,8 @@ import com.fathzer.jchess.uci.parameters.Parser;
  * @see Engine
  */
 public class UCI implements Runnable, AutoCloseable {
+	public static final String INIT_COMMANDS_PROPERTY_FILE = "uciInitCommands";
+	
 	private static final BufferedReader IN = new BufferedReader(new InputStreamReader(System.in));
 	private static final String MOVES = "moves";
 	private static final String ENGINE_CMD = "engine";
@@ -262,24 +266,45 @@ public class UCI implements Runnable, AutoCloseable {
 
 	@Override
 	public void run() {
+		init();
 		while (true) {
 			log("Waiting for command...");
 			final String command=getNextCommand();
-	    	log(">",command);
 			if ("quit".equals(command) || "q".equals(command)) {
+		    	log(">",command);
 				break;
 			}
-			final Deque<String> tokens = new LinkedList<>(Arrays.asList(command.split(" ")));
-			if (!command.isEmpty() && !tokens.isEmpty()) {
-				final Consumer<Deque<String>> executor = executors.get(tokens.pop());
-				if (executor==null) {
-					debug("unknown command");
-				} else {
-					try {
-						executor.accept(tokens);
-					} catch (RuntimeException e) {
-						out(e,0);
-					}
+			doCommand(command);
+		}
+	}
+	
+	private void init() {
+		final String initFile = System.getProperty(INIT_COMMANDS_PROPERTY_FILE);
+		if (initFile!=null) {
+			try {
+				Files.readAllLines(Paths.get(initFile)).stream().map(String::trim).filter(s -> !s.isEmpty()).forEach(this::doCommand);
+			} catch (IOException e) {
+				out(e,0);
+			}
+		}
+
+	}
+
+	/** Executes a command.
+	 * @param command The command to execute
+	 */
+	protected void doCommand(final String command) {
+    	log(">",command);
+		final Deque<String> tokens = new LinkedList<>(Arrays.asList(command.split(" ")));
+		if (!command.isEmpty() && !tokens.isEmpty()) {
+			final Consumer<Deque<String>> executor = executors.get(tokens.pop());
+			if (executor==null) {
+				debug("unknown command");
+			} else {
+				try {
+					executor.accept(tokens);
+				} catch (RuntimeException e) {
+					out(e,0);
 				}
 			}
 		}
