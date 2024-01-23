@@ -71,6 +71,9 @@ protected Collection<PerfTTestData> readTestData() {
 }
 ``` 
  
+## Initializing the engine with the command line.
+At program startup (when ```uci.run()``` is called), if the *uciInitCommands* system property is set, it is used as the path of a file that contains an uci command per line.  
+Every commands are executed once, before starting to listen to the standard input for commands issued by the GUI. 
 
 ## Adding custom commands
 Override the **com.fathzer.jchess.uci.UCI** or **com.fathzer.jchess.uci.extended.ExtendedUCI** classes and use its *addCommand* method to add your own custom commands.  
