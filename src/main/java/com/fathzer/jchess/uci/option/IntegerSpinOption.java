@@ -12,10 +12,4 @@ public class IntegerSpinOption extends SpinOption<Integer> {
 	protected Integer parse(String value) {
 		return Integer.parseInt(value);
 	}
-
-	@Override
-	protected int compare(Integer first, Integer other) {
-		return first.compareTo(other);
-	}
-
 }

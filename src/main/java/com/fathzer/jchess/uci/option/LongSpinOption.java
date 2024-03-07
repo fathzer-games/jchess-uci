@@ -12,10 +12,4 @@ public class LongSpinOption extends SpinOption<Long> {
 	protected Long parse(String value) {
 		return Long.parseLong(value);
 	}
-
-	@Override
-	protected int compare(Long first, Long other) {
-		return first.compareTo(other);
-	}
-
 }
