@@ -119,10 +119,10 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 			public BestMoveReply get() {
 				final UCIEngineSearchConfiguration<M, B> c = new UCIEngineSearchConfiguration<>(timeManager);
 				final UCIEngineSearchConfiguration.EngineConfiguration previous = c.configure(engine, options, board);
-				//FIXME searchmoves is ignored
-				final M move = engine.apply(board);
+				final List<M> candidates = options.getMoveToSearch().stream().map(AbstractEngine.this::toMove).toList();
+				final M move = engine.getBestMove(board, candidates.isEmpty() ? null : candidates);
 				c.set(engine, previous);
-				return new BestMoveReply(toUCI(move));
+				return new BestMoveReply(move==null ? null : toUCI(move));
 			}
 
 			@Override

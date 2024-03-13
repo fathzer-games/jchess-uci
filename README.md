@@ -87,7 +87,6 @@ If you want another way to exchange messages, you can subclass the UCI class and
 If you do not use the *com.fathzer.jchess.uci.extended* and *com.fathzer.jchess.uci.helper* packages, you can exclude the *com.fathzer:games-core* dependency.
 
 ## Known bugs
-- The *searchmoves* option of the go command is ignored by **AbstractEngine**
 
 ## TODO
 * Verify the engine is protected against strange client behavior (like changing the position during a go request).

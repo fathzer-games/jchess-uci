@@ -9,14 +9,22 @@ public class BestMoveReply {
 	public BestMoveReply(UCIMove move) {
 		this(move, null);
 	}
+	
 	public BestMoveReply(UCIMove move, UCIMove ponderMove) {
 		this.move = move;
 		this.ponderMove = ponderMove;
 	}
-	public UCIMove getMove() {
-		return move;
+	
+	public Optional<UCIMove> getMove() {
+		return Optional.ofNullable(move);
 	}
+	
 	public Optional<UCIMove> getPonderMove() {
 		return Optional.ofNullable(ponderMove);
+	}
+	
+	@Override
+	public String toString() {
+		return "bestmove "+(move==null?"(none)":move)+(ponderMove==null?"":(" "+ponderMove));
 	}
 }
