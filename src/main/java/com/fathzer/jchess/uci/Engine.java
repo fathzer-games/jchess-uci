@@ -105,7 +105,7 @@ public interface Engine {
 	 * @param params The go parameters.
 	 * @return A long running task able to compute the engine's move.
 	 */
-	LongRunningTask<BestMoveReply> go(GoParameters params);
+	LongRunningTask<GoReply> go(GoParameters params);
 	
 	/** Tests whether a position is set.
 	 * @return true if a position is set
