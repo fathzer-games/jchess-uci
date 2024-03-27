@@ -112,6 +112,10 @@ public class GoReply {
 		this.ponderMove = ponderMove;
 	}
 	
+	public void setInfo(Info info) {
+		this.info = info;
+	}
+
 	public Optional<UCIMove> getMove() {
 		return Optional.ofNullable(bestMove);
 	}
@@ -140,7 +144,25 @@ public class GoReply {
 		if (info==null) {
 			return Optional.empty();
 		}
-		//TODO
-		return Optional.of("depth "+info.depth);
+		final StringBuilder builder = new StringBuilder();
+		if (info.depth>0) {
+			builder.append("depth ").append(info.depth);
+		}
+		final Optional<Score> score = info.scoreBuilder.apply(bestMove);
+		if (score.isPresent()) {
+			if (!builder.isEmpty()) {
+				builder.append(' ');
+			}
+			builder.append("score ").append(score.get().toUCI());
+		}
+		final Optional<List<UCIMove>> pv = info.pvBuilder.apply(bestMove);
+		if (pv.isPresent()) {
+			if (!builder.isEmpty()) {
+				builder.append(' ');
+			}
+			final String moves = String.join(" ", pv.get().stream().map(UCIMove::toString).toList());
+			builder.append("multipv 1 pv ").append(moves);
+		}
+		return builder.isEmpty() ? Optional.empty() : Optional.of("info "+builder);
 	}
 }

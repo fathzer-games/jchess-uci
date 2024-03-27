@@ -191,7 +191,12 @@ public class UCI implements Runnable, AutoCloseable {
 			final Optional<GoParameters> goOptions = parse(GoParameters::new, GoParameters.PARSER, tokens);
 			if (goOptions.isPresent()) {
 				final LongRunningTask<GoReply> task = engine.go(goOptions.get());
-				final boolean started = doBackground(() -> out(task.get().toString()), task::stop);
+				final boolean started = doBackground(() -> {
+					final GoReply goReply = task.get();
+					final Optional<String> mainInfo = goReply.getMainInfoString();
+					mainInfo.ifPresent(this::out);
+					out(goReply.toString());
+				}, task::stop);
 				if (!started) {
 					debug("Engine is already working");
 				}
