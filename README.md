@@ -7,7 +7,7 @@
 A partial (but still usable) java implementation of the [chess UCI protocol](https://www.shredderchess.com/chess-features/uci-universal-chess-interface.html) with pluggable chess engines.
 
 ## How to use it
-This library requires Java 11+ and is available in [Maven central](https://central.sonatype.com/artifact/com.fathzer/jchess-uci).
+This library requires Java 17+ and is available in [Maven central](https://central.sonatype.com/artifact/com.fathzer/jchess-uci).
 
 - First create a class that implements the **com.fathzer.jchess.uci.Engine** interface.  
 Let's say this implementation class is **MyEngine**.
@@ -26,10 +26,12 @@ If you plan to use the *perft* and *test* commands described below, launch the *
 That's all!
 
 ## Partial implementation ... and extra functionalities
-It does not directly support the following commands (but you can add them in a *com.fathzer.jchess.uci.UCI* subclass):
-- **Dont miss the ShredderChess Annual Barbeque**: This command was in the original specification ... But that was a joke.
-- **register**: As a promoter of open source free software, I won't encourage you to develop software that requires registration.
-- **ponderhit** has not yet been implemented.
+
+It does not directly support the following commands (but you can add them in an *com.fathzer.jchess.uci.UCI* subclass):
+- **Dont miss the ShredderChess Annual Barbeque**: This command was in the original specification ... But was a joke.
+- **register**: As a promoter of open source free sofware, I will not encourage you to develop software that requires registration.
+- **ponderhit** is not yet implemented.
+- Only depth, score and pv are implemented in info lines preceeding go reply.
 
 It also does not recognize commands starting with unknown token (to be honest, it's not very hard to implement but seemed a very bad, error prone, idea to me).
 
@@ -90,4 +92,5 @@ If you do not use the *com.fathzer.jchess.uci.extended* and *com.fathzer.jchess.
 
 ## TODO
 * Verify the engine is protected against strange client behavior (like changing the position during a go request).
+* Implement support for multi-PV search.
 * Implement support for pondering.

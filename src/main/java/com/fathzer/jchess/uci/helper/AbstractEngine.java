@@ -4,15 +4,24 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 import com.fathzer.games.MoveGenerator;
 import com.fathzer.games.MoveGenerator.MoveConfidence;
+import com.fathzer.games.ai.evaluation.EvaluatedMove;
+import com.fathzer.games.ai.evaluation.Evaluation;
+import com.fathzer.games.ai.evaluation.Evaluation.Type;
 import com.fathzer.games.ai.evaluation.Evaluator;
 import com.fathzer.games.ai.iterativedeepening.IterativeDeepeningEngine;
+import com.fathzer.games.ai.iterativedeepening.IterativeDeepeningEngine.BestMove;
 import com.fathzer.games.ai.time.TimeManager;
 import com.fathzer.games.ai.transposition.TranspositionTable;
 import com.fathzer.jchess.uci.GoReply;
+import com.fathzer.jchess.uci.GoReply.CpScore;
+import com.fathzer.jchess.uci.GoReply.Info;
+import com.fathzer.jchess.uci.GoReply.MateScore;
+import com.fathzer.jchess.uci.GoReply.Score;
 import com.fathzer.jchess.uci.Engine;
 import com.fathzer.jchess.uci.LongRunningTask;
 import com.fathzer.jchess.uci.UCIMove;
@@ -120,9 +129,21 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 				final UCIEngineSearchConfiguration<M, B> c = new UCIEngineSearchConfiguration<>(timeManager);
 				final UCIEngineSearchConfiguration.EngineConfiguration previous = c.configure(engine, options, board);
 				final List<M> candidates = options.getMoveToSearch().stream().map(AbstractEngine.this::toMove).toList();
-				final M move = engine.getBestMove(board, candidates.isEmpty() ? null : candidates);
+				final Optional<BestMove<M>> best = engine.getBestMove(board, candidates.isEmpty() ? null : candidates);
 				c.set(engine, previous);
-				return new GoReply(move==null ? null : toUCI(move));
+				if (best.isEmpty()) {
+					return new GoReply(null);
+				}
+				final EvaluatedMove<M> move = best.get().move();
+				final GoReply goReply = new GoReply(toUCI(move.getContent()));
+				final Info info = new Info(best.get().depth());
+				info.setScoreBuilder(m -> toScore(toMove(m), move));
+				info.setPvBuilder(m -> {
+					final List<UCIMove> list = engine.getTranspositionTable().collectPV(board, toMove(m), info.getDepth()).stream().map(x -> toUCI(x)).toList();
+					return list.isEmpty() ? Optional.empty() : Optional.of(list);
+				});
+				goReply.setInfo(info);
+				return goReply;
 			}
 
 			@Override
@@ -131,6 +152,25 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 				engine.interrupt();
 			}
 		};
+	}
+	
+	private Optional<Score> toScore(M m, EvaluatedMove<M> known) {
+		final Evaluation evaluation = known.getEvaluation();
+		final Type type = evaluation.getType();
+		if (!m.equals(known.getContent()) || type==Type.UNKNOWN) {
+			return Optional.empty();
+		}
+		final Score score;
+		if (type==Type.EVAL) {
+			score = new CpScore(evaluation.getScore());
+		} else if (type==Type.WIN) {
+			score = new MateScore(evaluation.getCountToEnd());
+		} else if (type==Type.LOOSE) {
+			score = new MateScore(-evaluation.getCountToEnd());
+		} else {
+			throw new IllegalArgumentException("Type "+type+" is not supported");
+		}
+		return Optional.of(score); 
 	}
 	
 	@SuppressWarnings("unchecked")
