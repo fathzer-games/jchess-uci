@@ -12,7 +12,7 @@ import com.fathzer.games.ai.evaluation.Evaluator;
 import com.fathzer.games.ai.iterativedeepening.IterativeDeepeningEngine;
 import com.fathzer.games.ai.time.TimeManager;
 import com.fathzer.games.ai.transposition.TranspositionTable;
-import com.fathzer.jchess.uci.BestMoveReply;
+import com.fathzer.jchess.uci.GoReply;
 import com.fathzer.jchess.uci.Engine;
 import com.fathzer.jchess.uci.LongRunningTask;
 import com.fathzer.jchess.uci.UCIMove;
@@ -113,16 +113,16 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 	}
 	
 	@Override
-	public LongRunningTask<BestMoveReply> go(GoParameters options) {
+	public LongRunningTask<GoReply> go(GoParameters options) {
 		return new LongRunningTask<>() {
 			@Override
-			public BestMoveReply get() {
+			public GoReply get() {
 				final UCIEngineSearchConfiguration<M, B> c = new UCIEngineSearchConfiguration<>(timeManager);
 				final UCIEngineSearchConfiguration.EngineConfiguration previous = c.configure(engine, options, board);
 				final List<M> candidates = options.getMoveToSearch().stream().map(AbstractEngine.this::toMove).toList();
 				final M move = engine.getBestMove(board, candidates.isEmpty() ? null : candidates);
 				c.set(engine, previous);
-				return new BestMoveReply(move==null ? null : toUCI(move));
+				return new GoReply(move==null ? null : toUCI(move));
 			}
 
 			@Override
