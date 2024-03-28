@@ -21,12 +21,15 @@ import com.fathzer.jchess.uci.parameters.PerfStatsParameters;
 import com.fathzer.jchess.uci.parameters.PerfTParameters;
 
 public class ExtendedUCI extends UCI {
+	private static final String PERFT_COMMAND = "perft";
+	private static final String TEST_COMMAND = "test";
+	
 	private static final String NO_POSITION_DEFINED = "No position defined";
 
 	public ExtendedUCI(Engine defaultEngine) {
 		super(defaultEngine);
-		addCommand(this::doPerft, "perft");
-		addCommand(this::doPerfStat,"test");
+		addCommand(this::doPerft, PERFT_COMMAND);
+		addCommand(this::doPerfStat,TEST_COMMAND);
 		addCommand(this::doDisplay, "d");
 		addCommand(this::wait, "block");
 	}
@@ -64,15 +67,17 @@ public class ExtendedUCI extends UCI {
 		if (params.isPresent()) {
 			@SuppressWarnings("unchecked")
 			final LongRunningTask<PerfTResult<M>> task = new PerftTask<>((MoveGeneratorSupplier<M>)engine, params.get());
-			background(() -> doPerft(task, params.get()), task::stop);
+			if (!doBackground(() -> doPerft(task, params.get()), task::stop, e -> err(PERFT_COMMAND,e))) {
+				debug("Engine is already working");
+			}
 		}
 	}
 	
-	private void background(Runnable task, Runnable stopper) {
-		if (!doBackground(task, stopper)) {
-			debug("Engine is already working");
-		}
-	}
+//	private void background(Runnable task, Runnable stopper) {
+//		if (!doBackground(task, stopper, e -> out(e,0))) {
+//			debug("Engine is already working");
+//		}
+//	}
 
 	private <M> void doPerft(LongRunningTask<PerfTResult<M>> task, PerfTParameters params) {
 		final long start = System.currentTimeMillis(); 
@@ -114,7 +119,7 @@ public class ExtendedUCI extends UCI {
 
 	private <M, B extends MoveGenerator<M>> void doPerfStat(Collection<PerfTTestData> testData, TestableMoveGeneratorBuilder<M, B> engine, PerfStatsParameters params) {
 		final MoveGeneratorChecker test = new MoveGeneratorChecker(testData);
-		test.setErrorManager(e-> out(e,0));
+		test.setErrorManager(e-> err(TEST_COMMAND, e));
 		test.setCountErrorManager(e -> out("Error for "+e.getStartPosition()+" expected "+e.getExpectedCount()+" got "+e.getActualCount()));
 		final TimerTask task = new TimerTask() {
 			@Override
@@ -122,7 +127,7 @@ public class ExtendedUCI extends UCI {
 				doStop(null);
 			}
 		};
-		background(() -> {
+		doBackground(() -> {
 			final Timer timer = new Timer();
 			timer.schedule(task, 1000L*params.getCutTime());
 			try {
@@ -133,7 +138,7 @@ public class ExtendedUCI extends UCI {
 			} finally {
 				timer.cancel();
 			}
-		}, test::cancel);
+		}, test::cancel, e -> err(TEST_COMMAND, e));
 	}
 	
 	protected Collection<PerfTTestData> readTestData() {
@@ -147,7 +152,7 @@ public class ExtendedUCI extends UCI {
 	
 	private void wait(Deque<String> args) {
 		while (true) {
-			if (doBackground(()->{}, ()->{})) {
+			if (doBackground(()->{}, ()->{}, e ->{})) {
 				return;
 			}
 			try {

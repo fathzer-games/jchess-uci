@@ -23,6 +23,7 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import com.fathzer.jchess.uci.BackgroundTaskManager.Task;
 import com.fathzer.jchess.uci.option.CheckOption;
 import com.fathzer.jchess.uci.option.IntegerSpinOption;
 import com.fathzer.jchess.uci.option.Option;
@@ -39,6 +40,7 @@ public class UCI implements Runnable, AutoCloseable {
 	private static final BufferedReader IN = new BufferedReader(new InputStreamReader(System.in));
 	private static final String MOVES = "moves";
 	private static final String ENGINE_CMD = "engine";
+	private static final String GO_CMD = "go";
 	private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.nnnnnnnn");
 	
 	private static final String CHESS960_OPTION = "UCI_Chess960";
@@ -49,7 +51,7 @@ public class UCI implements Runnable, AutoCloseable {
 	private final Map<String, Consumer<Deque<String>>> executors = new HashMap<>();
 	private final Map<String, Engine> engines = new HashMap<>();
 	
-	private final BackgroundTaskManager backTasks = new BackgroundTaskManager(e -> out(e, 0));
+	private final BackgroundTaskManager backTasks = new BackgroundTaskManager();
 	private boolean debug = Boolean.getBoolean("logToFile");
 	private boolean debugUCI = Boolean.getBoolean("debugUCI");
 	private Map<String, Option<?>> options;
@@ -64,7 +66,7 @@ public class UCI implements Runnable, AutoCloseable {
 		addCommand(this::doIsReady, "isready");
 		addCommand(this::doNewGame, "ucinewgame", "ng");
 		addCommand(this::doPosition, "position");
-		addCommand(this::doGo, "go");
+		addCommand(this::doGo, GO_CMD);
 		addCommand(this::doStop, "stop");
 		addCommand(this::doEngine,ENGINE_CMD);
 		if (System.console()!=null) {
@@ -177,11 +179,12 @@ public class UCI implements Runnable, AutoCloseable {
 	
 	/** Launches a task on the background thread.
 	 * @param task The task to launch
-	 * @param stopper A runnable that stops the task when invoked (it is user by the <i>stop</i> command in order to stop the task. 
+	 * @param stopper A runnable that stops the task when invoked (it is user by the <i>stop</i> command in order to stop the task.
+	 * @param logger Where to send the exceptions 
 	 * @return true if the task is launched, false if another task is already running.
 	 */
-	protected boolean doBackground(Runnable task, Runnable stopper) {
-		return backTasks.doBackground(task, stopper);
+	protected boolean doBackground(Runnable task, Runnable stopper, Consumer<Exception> logger) {
+		return backTasks.doBackground(new Task(task, stopper, logger));
 	}
 
 	protected void doGo(Deque<String> tokens) {
@@ -196,7 +199,7 @@ public class UCI implements Runnable, AutoCloseable {
 					final Optional<String> mainInfo = goReply.getMainInfoString();
 					mainInfo.ifPresent(this::out);
 					out(goReply.toString());
-				}, task::stop);
+				}, task::stop, e -> err(GO_CMD, e));
 				if (!started) {
 					debug("Engine is already working");
 				}
@@ -271,12 +274,14 @@ public class UCI implements Runnable, AutoCloseable {
 		init();
 		while (true) {
 			log("Waiting for command...");
-			final String command=getNextCommand();
+			final String command=getNextCommand().trim();
 			if ("quit".equals(command) || "q".equals(command)) {
 		    	log(">",command);
 				break;
 			}
-			doCommand(command);
+			if (!command.isEmpty()) {
+				doCommand(command);
+			}
 		}
 	}
 	
@@ -286,7 +291,7 @@ public class UCI implements Runnable, AutoCloseable {
 			try {
 				Files.readAllLines(Paths.get(initFile)).stream().map(String::trim).filter(s -> !s.isEmpty()).forEach(this::doCommand);
 			} catch (IOException e) {
-				out(e,0);
+				err("init engine", e);
 			}
 		}
 
@@ -294,30 +299,40 @@ public class UCI implements Runnable, AutoCloseable {
 
 	/** Executes a command.
 	 * @param command The command to execute
+	 * @param returns true if the command was found
 	 */
-	protected void doCommand(final String command) {
+	protected boolean doCommand(final String command) {
     	log(">",command);
 		final Deque<String> tokens = new LinkedList<>(Arrays.asList(command.split(" ")));
-		if (!command.isEmpty() && !tokens.isEmpty()) {
-			final Consumer<Deque<String>> executor = executors.get(tokens.pop());
-			if (executor==null) {
-				debug("unknown command");
-			} else {
-				try {
-					executor.accept(tokens);
-				} catch (RuntimeException e) {
-					out(e,0);
-				}
+		final Consumer<Deque<String>> executor = executors.get(tokens.pop());
+		if (executor==null) {
+			debug("unknown command");
+			return false;
+		} else {
+			try {
+				executor.accept(tokens);
+			} catch (RuntimeException e) {
+				err(command, e);
 			}
+			return true;
 		}
 	}
 
-	protected void out(Throwable e, int level) {
-		out((level>0 ? "caused by":"")+e.toString());
-		Arrays.stream(e.getStackTrace()).forEach(f -> out(f.toString()));
+	protected void err(String tag, Throwable e) {
+		err("Error with "+tag+" tag");
+		err(e,0);
+	}
+	
+	private void err(Throwable e, int level) {
+		err((level>0 ? "caused by":"")+e.toString());
+		Arrays.stream(e.getStackTrace()).forEach(f -> err(f.toString()));
 		if (e.getCause()!=null) {
-			out(e.getCause(),level+1);
+			err(e.getCause(),level+1);
 		}
+	}
+	
+	protected void err(CharSequence message) {
+		System.err.println(message);
 	}
 	
 	private void log(String... message) {
@@ -344,7 +359,7 @@ public class UCI implements Runnable, AutoCloseable {
 	/** Gets the next command from UCI client.
 	 * <br>This method blocks until a command is available.
 	 * <br>One can override this method in order to get commands from somewhere other than standard console input.
-	 * @return The net command
+	 * @return The next command
 	 */
 	protected String getNextCommand() {
 		String line;
@@ -373,8 +388,8 @@ public class UCI implements Runnable, AutoCloseable {
 	protected void debug(CharSequence message) {
     	log(":","info","UCI debug is", Boolean.toString(debugUCI),message.toString());
 		if (debugUCI) {
-			System.out.print("info string ");
-			System.out.println(message.toString());
+			out("info string ");
+			out(message.toString());
 		}
 	}
 

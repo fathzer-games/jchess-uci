@@ -6,23 +6,30 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 class BackgroundTaskManager implements AutoCloseable {
-	private final ExecutorService exec = Executors.newFixedThreadPool(1);
-	private final AtomicReference<Runnable> stopper = new AtomicReference<>();
-	private final Consumer<Exception> logger;
-	
-	public BackgroundTaskManager(Consumer<Exception> logger) {
-		this.logger = logger;
+	static class Task {
+		private final Consumer<Exception> logger;
+		private final Runnable task;
+		private final Runnable stopTask;
+		
+		Task(Runnable task, Runnable stopTask, Consumer<Exception> logger) {
+			this.task = task;
+			this.stopTask = stopTask;
+			this.logger = logger;
+		}
 	}
 	
-	boolean doBackground(Runnable task, Runnable stopTask) {
-		final boolean result = this.stopper.compareAndSet(null, stopTask);
+	
+	private final ExecutorService exec = Executors.newFixedThreadPool(1);
+	private final AtomicReference<Task> current = new AtomicReference<>();
+	
+	boolean doBackground(Task task) {
+		final boolean result = this.current.compareAndSet(null, task);
 		if (result) {
 			exec.submit(() -> {
 				try {
-					task.run();
-					this.stopper.set(null);
+					task.task.run();
+					this.current.set(null);
 				} catch (Exception e) {
-					logger.accept(e);
 					stop();
 				}
 			});
@@ -34,12 +41,12 @@ class BackgroundTaskManager implements AutoCloseable {
 	 * @return true if a task was executed.
 	 */
 	boolean stop() {
-		final Runnable stopTask = stopper.getAndSet(null);
+		final Task stopTask = current.getAndSet(null);
 		if (stopTask!=null) {
 			try {
-				stopTask.run();
+				stopTask.stopTask.run();
 			} catch (Exception e) {
-				logger.accept(e);
+				stopTask.logger.accept(e);
 			}
 		}
 		return stopTask!=null;
