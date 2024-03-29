@@ -153,6 +153,10 @@ public class UCI implements Runnable, AutoCloseable {
 	}
 
 	protected void doPosition(Deque<String> tokens) {
+		if (tokens.isEmpty()) {
+			debug("missing position definition");
+			return;
+		}
 		final String first = tokens.pop();
 		final String fen;
 		if ("fen".equals(first)) {

@@ -28,11 +28,11 @@ class UCITest {
 
 	@Test
 	void test() {
-//		assertFalse(uci.post("cjhjhl",500));
-//		assertFalse(uci.getDebug().isEmpty());
+		assertFalse(uci.post("cjhjhl",500));
+		assertFalse(uci.getDebug().isEmpty());
 		
 		clear();
 		assertTrue(uci.post("position", 60000));
-		System.out.println(uci.getOutput());
+		assertFalse(uci.getDebug().isEmpty());
 	}
 }

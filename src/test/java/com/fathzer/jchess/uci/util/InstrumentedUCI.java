@@ -22,7 +22,7 @@ public class InstrumentedUCI extends UCI {
 	private final BlockingQueue<String> input;
 	private final BlockingQueue<String> output;
 	private final BlockingQueue<String> debug;
-	private final Map<String, Exception> exceptions;
+	private final Map<String, Throwable> exceptions;
 	
 	public InstrumentedUCI(Engine defaultEngine) {
 		super(defaultEngine);
@@ -45,6 +45,11 @@ public class InstrumentedUCI extends UCI {
 	@Override
 	protected void out(CharSequence message) {
 		output.add(message.toString());
+	}
+
+	@Override
+	protected void err(String tag, Throwable e) {
+		exceptions.put(tag, e);
 	}
 
 	@Override
@@ -75,7 +80,7 @@ public class InstrumentedUCI extends UCI {
 		try {
 			synchronized (this) {
 				wait(timeOutMS);
-				final Exception e = exceptions.get(command);
+				final Throwable e = exceptions.get(command);
 				if (e!=null) {
 					if (e instanceof UnknownCommandException) {
 						return false;
