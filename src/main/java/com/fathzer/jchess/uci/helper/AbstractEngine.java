@@ -22,6 +22,7 @@ import com.fathzer.jchess.uci.GoReply.CpScore;
 import com.fathzer.jchess.uci.GoReply.Info;
 import com.fathzer.jchess.uci.GoReply.MateScore;
 import com.fathzer.jchess.uci.GoReply.Score;
+import com.fathzer.jchess.uci.ClassicalOptions;
 import com.fathzer.jchess.uci.Engine;
 import com.fathzer.jchess.uci.LongRunningTask;
 import com.fathzer.jchess.uci.UCIMove;
@@ -96,7 +97,7 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 		if (!evaluatorBuilders.isEmpty()) {
 			options.add(new ComboOption("evaluation", this::setEvaluator, defaultEvaluator, evaluatorBuilders.keySet()));
 		}
-		options.add(new IntegerSpinOption("threads", this.engine::setParallelism, defaultThreads, 1, Runtime.getRuntime().availableProcessors()));
+		options.add(ClassicalOptions.threads(this.engine::setParallelism, defaultThreads));
 		options.add(new IntegerSpinOption("depth", this.engine.getDeepeningPolicy()::setDepth, defaultDepth, 1, 128));
 		options.add(new LongSpinOption("maxtime", this.engine.getDeepeningPolicy()::setMaxTime, defaultMaxTime, 1, Long.MAX_VALUE));
 		return options;

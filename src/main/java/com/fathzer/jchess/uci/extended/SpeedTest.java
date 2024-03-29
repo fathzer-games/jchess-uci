@@ -69,10 +69,10 @@ public class SpeedTest<M, B extends MoveGenerator<M>> {
 	 */
 	public long run() {
 		final DeepeningPolicy policy = uciEngine.getEngine().getDeepeningPolicy();
-		int size = policy.getSize();
-		int accuracy = policy.getAccuracy();
-		int depth = policy.getDepth();
-		String fen = (uciEngine.isPositionSet() && uciEngine instanceof Displayable) ? ((Displayable)uciEngine).getFEN() : null;
+		final int size = policy.getSize();
+		final int accuracy = policy.getAccuracy();
+		final int depth = policy.getDepth();
+		final String fen = (uciEngine.isPositionSet() && uciEngine instanceof Displayable displayable) ? displayable.getFEN() : null;
 		try {
 			final long start = System.currentTimeMillis();
 			doSpeedTest();
@@ -111,7 +111,7 @@ public class SpeedTest<M, B extends MoveGenerator<M>> {
 		mv.assertEquals(Type.WIN, max.getType());
 		mv.assertEquals(1, max.getCountToEnd());
 		mv.assertEquals(UCIMove.from("c3c2"), uciEngine.toUCI(mv.moves.get(0).getContent()));
-		max = mv.moves.get(1).getEvaluation();
+//		max = mv.moves.get(1).getEvaluation();
 		//TODO iterative engine fails to find the second best move in tree, probably because of deepening interruption by first mat
 		// Make a test when it will be fixed with a second move that is a MAT in 3 move (see commented code). 
 //		mv.assertEquals(Type.WIN, max.getType());

@@ -8,11 +8,11 @@ import java.util.function.Consumer;
 class BackgroundTaskManager implements AutoCloseable {
 	static class Task {
 		private final Consumer<Exception> logger;
-		private final Runnable task;
+		private final Runnable run;
 		private final Runnable stopTask;
 		
 		Task(Runnable task, Runnable stopTask, Consumer<Exception> logger) {
-			this.task = task;
+			this.run = task;
 			this.stopTask = stopTask;
 			this.logger = logger;
 		}
@@ -27,7 +27,7 @@ class BackgroundTaskManager implements AutoCloseable {
 		if (result) {
 			exec.submit(() -> {
 				try {
-					task.task.run();
+					task.run.run();
 					this.current.set(null);
 				} catch (Exception e) {
 					stop();

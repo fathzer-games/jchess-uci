@@ -2,7 +2,7 @@ package com.fathzer.jchess.uci.option;
 
 import java.util.function.Consumer;
 
-abstract class SpinOption<N extends Number & Comparable<N>> extends Option<N> {
+public abstract class SpinOption<N extends Number & Comparable<N>> extends Option<N> {
 	private final N defaultValue;
 	private final N min;
 	private final N max;

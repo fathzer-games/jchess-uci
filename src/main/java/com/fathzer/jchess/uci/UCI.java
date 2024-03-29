@@ -1,5 +1,7 @@
 package com.fathzer.jchess.uci;
 
+import static com.fathzer.jchess.uci.ClassicalOptions.*;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.EOFException;
@@ -24,7 +26,6 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import com.fathzer.jchess.uci.BackgroundTaskManager.Task;
-import com.fathzer.jchess.uci.option.CheckOption;
 import com.fathzer.jchess.uci.option.IntegerSpinOption;
 import com.fathzer.jchess.uci.option.Option;
 import com.fathzer.jchess.uci.parameters.GoParameters;
@@ -42,10 +43,6 @@ public class UCI implements Runnable, AutoCloseable {
 	private static final String ENGINE_CMD = "engine";
 	private static final String GO_CMD = "go";
 	private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.nnnnnnnn");
-	
-	private static final String CHESS960_OPTION = "UCI_Chess960";
-	private static final String HASH_OPTION = "Hash";
-	private static final String OWN_BOOK_OPTION = "OwnBook";
 	
 	protected Engine engine;
 	private final Map<String, Consumer<Deque<String>>> executors = new HashMap<>();
@@ -263,13 +260,13 @@ public class UCI implements Runnable, AutoCloseable {
 		this.options = new HashMap<>();
 		engineOptions.forEach(o -> this.options.put(o.getName(), o));
 		if (engine.isChess960Supported()) {
-			options.computeIfAbsent(CHESS960_OPTION, k -> new CheckOption(k, engine::setChess960, false));
+			options.computeIfAbsent(CHESS960_NAME, k -> chess960(engine::setChess960));
 		}
 		if (engine.hasOwnBook()) {
-			options.computeIfAbsent(OWN_BOOK_OPTION, k -> new CheckOption(k, engine::setOwnBook, true));
+			options.computeIfAbsent(OWN_BOOK_NAME, k -> ownBook(engine::setOwnBook, true));
 		}
 		if (engine.getDefaultHashTableSize()>=0) {
-			options.computeIfAbsent(HASH_OPTION, k -> new IntegerSpinOption(k, engine::setHashTableSize, engine.getDefaultHashTableSize(), 1, 64*1024));
+			options.computeIfAbsent(HASH_NAME, k -> new IntegerSpinOption(k, engine::setHashTableSize, engine.getDefaultHashTableSize(), 1, 64*1024));
 		}
 	}
 
