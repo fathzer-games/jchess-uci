@@ -1,5 +1,8 @@
 package com.fathzer.jchess.uci.util;
 
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -20,15 +23,13 @@ public class InstrumentedUCI extends UCI {
 	}
 	
 	private final BlockingQueue<String> input;
-	private final BlockingQueue<String> output;
-	private final BlockingQueue<String> debug;
+	private final List<String> output;
 	private final Map<String, Throwable> exceptions;
 	
 	public InstrumentedUCI(Engine defaultEngine) {
 		super(defaultEngine);
 		input = new LinkedBlockingQueue<String>();
-		output = new LinkedBlockingQueue<String>();
-		debug = new LinkedBlockingQueue<String>();
+		output = Collections.synchronizedList(new LinkedList<String>());
 		this.exceptions = new ConcurrentHashMap<>();
 	}
 
@@ -50,11 +51,6 @@ public class InstrumentedUCI extends UCI {
 	@Override
 	protected void err(String tag, Throwable e) {
 		exceptions.put(tag, e);
-	}
-
-	@Override
-	protected void debug(CharSequence message) {
-		debug.add(message.toString());
 	}
 
 	@Override
@@ -99,16 +95,11 @@ public class InstrumentedUCI extends UCI {
 	}
 	
 	public void clear() {
-		debug.clear();
 		output.clear();
 		exceptions.clear();
 	}
 
-	public BlockingQueue<String> getOutput() {
+	public List<String> out() {
 		return output;
-	}
-
-	public BlockingQueue<String> getDebug() {
-		return debug;
 	}
 }

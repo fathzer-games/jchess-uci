@@ -91,10 +91,12 @@ public interface Engine {
 
 	/** Sets the start position.
 	 * @param fen The start position in the fen format.
+	 * @throws IllegalArgumentException if fen is illegal.
 	 */
 	void setStartPosition(String fen);
 	/** Moves a piece on the chess board.
 	 * @param move The move to apply.
+	 * @throws IllegalArgumentException if move is illegal.
 	 */
 	void move(UCIMove move);
 	/** Start searching for the best move.
@@ -106,9 +108,4 @@ public interface Engine {
 	 * @return A long running task able to compute the engine's move.
 	 */
 	LongRunningTask<GoReply> go(GoParameters params);
-	
-	/** Tests whether a position is set.
-	 * @return true if a position is set
-	 */
-	boolean isPositionSet();
 }

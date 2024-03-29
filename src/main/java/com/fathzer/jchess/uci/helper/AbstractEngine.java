@@ -186,9 +186,4 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 	public IterativeDeepeningEngine<M, B> getEngine() {
 		return engine;
 	}
-	
-	@Override
-	public boolean isPositionSet() {
-		return board!=null;
-	}
 }

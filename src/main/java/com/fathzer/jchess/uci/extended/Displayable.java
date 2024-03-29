@@ -15,7 +15,7 @@ public interface Displayable {
 	
 	/** Returns the <a href="https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation">FEN</a> representation of the board.
 	 * <br>Calling this method when no position is defined may lead to unpredictable results.
-	 * @return a string representing the chess board.
+	 * @return a string representing the chess board or null if no position is defined.
 	 */
 	String getFEN();
 }

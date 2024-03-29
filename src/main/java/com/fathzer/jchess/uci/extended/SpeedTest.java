@@ -72,7 +72,7 @@ public class SpeedTest<M, B extends MoveGenerator<M>> {
 		final int size = policy.getSize();
 		final int accuracy = policy.getAccuracy();
 		final int depth = policy.getDepth();
-		final String fen = (uciEngine.isPositionSet() && uciEngine instanceof Displayable displayable) ? displayable.getFEN() : null;
+		final String fen = uciEngine instanceof Displayable displayable ? displayable.getFEN() : null;
 		try {
 			final long start = System.currentTimeMillis();
 			doSpeedTest();

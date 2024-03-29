@@ -35,13 +35,14 @@ public class ExtendedUCI extends UCI {
 	}
 	
 	protected void doDisplay(Deque<String> tokens) {
-		if (!engine.isPositionSet()) {
+		if (!isPositionSet()) {
 			debug(NO_POSITION_DEFINED);
 			return;
 		}
 		if (! (engine instanceof Displayable)) {
 			debug("position display is not supported by this engine");
 		}
+		//FIXME Engine could be non displayable here
 		final String result;
 		if (tokens.isEmpty()) {
 			result = ((Displayable)getEngine()).getBoardAsString();
@@ -55,7 +56,7 @@ public class ExtendedUCI extends UCI {
 	}
 
 	protected <M> void doPerft(Deque<String> tokens) {
-		if (!engine.isPositionSet()) {
+		if (!isPositionSet()) {
 			debug(NO_POSITION_DEFINED);
 			return;
 		}

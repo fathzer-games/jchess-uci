@@ -53,6 +53,8 @@ public class UCI implements Runnable, AutoCloseable {
 	private boolean debugUCI = Boolean.getBoolean("debugUCI");
 	private Map<String, Option<?>> options;
 	
+	private boolean isPositionSet;
+	
 	public UCI(Engine defaultEngine) {
 		engines.put(defaultEngine.getId(), defaultEngine);
 		this.engine = defaultEngine;
@@ -147,6 +149,7 @@ public class UCI implements Runnable, AutoCloseable {
 
 	protected void doNewGame(Deque<String> tokens) {
 		getEngine().newGame();
+		isPositionSet = false;
 	}
 
 	protected void doPosition(Deque<String> tokens) {
@@ -165,13 +168,22 @@ public class UCI implements Runnable, AutoCloseable {
 			return;
 		}
 		log("Setting board to FEN",fen);
-		getEngine().setStartPosition(fen);
-		tokens.stream().dropWhile(t->!MOVES.equals(t)).skip(1).forEach(this::doMove);
+		try {
+			getEngine().setStartPosition(fen);
+			tokens.stream().dropWhile(t->!MOVES.equals(t)).skip(1).forEach(this::doMove);
+			isPositionSet = true;
+		} catch (IllegalArgumentException e) {
+			debug("invalid position definition");
+		}
 	}
 	
 	private void doMove(String move) {
 		log("Moving",move);
-		getEngine().move(UCIMove.from(move));
+		try {
+			getEngine().move(UCIMove.from(move));
+		} catch (IllegalArgumentException e) {
+			debug("invalid move "+move);
+		}
 	}
 	
 	private String getFEN(Collection<String> tokens) {
@@ -189,7 +201,7 @@ public class UCI implements Runnable, AutoCloseable {
 	}
 
 	protected void doGo(Deque<String> tokens) {
-		if (!engine.isPositionSet()) {
+		if (!isPositionSet()) {
 			debug("No position defined");
 		} else {
 			final Optional<GoParameters> goOptions = parse(GoParameters::new, GoParameters.PARSER, tokens);
@@ -240,7 +252,8 @@ public class UCI implements Runnable, AutoCloseable {
 			if (newEngine.equals(this.engine)) {
 			 return;	
 			}
-			if (engine.isPositionSet()) {
+			if (isPositionSet()) {
+				isPositionSet = false;
 				debug("position is cleared by engine change");
 			}
 			this.engine = newEngine;
@@ -385,13 +398,26 @@ public class UCI implements Runnable, AutoCloseable {
 		System.out.println(message);
 	}
 	
+	/** Tests whether the debug mode is on.
+	 * @return true if debug mode is on.
+	 */
+	protected boolean isDebugMode() {
+		return debugUCI;
+	}
+	
 	@SuppressWarnings("java:S106")
 	protected void debug(CharSequence message) {
     	log(":","info","UCI debug is", Boolean.toString(debugUCI),message.toString());
 		if (debugUCI) {
-			out("info string ");
-			out(message.toString());
+			out("info string "+message);
 		}
+	}
+	
+	/** Tests whether a position is set.
+	 * @return true if a position is set
+	 */
+	protected boolean isPositionSet() {
+		return isPositionSet;
 	}
 
 	@Override

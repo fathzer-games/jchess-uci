@@ -13,7 +13,6 @@ public class InstrumentedEngine implements Engine {
 	private Consumer<String> positionConsumer;
 	private Consumer<UCIMove> moveConsumer;
 	private Function<GoParameters, LongRunningTask<GoReply>> goFunction;
-	private String fen;
 
 	@Override
 	public String getId() {
@@ -22,7 +21,6 @@ public class InstrumentedEngine implements Engine {
 
 	@Override
 	public void setStartPosition(String fen) {
-		this.fen = fen;
 		positionConsumer.accept(fen);
 	}
 
@@ -34,11 +32,6 @@ public class InstrumentedEngine implements Engine {
 	@Override
 	public LongRunningTask<GoReply> go(GoParameters params) {
 		return goFunction.apply(params);
-	}
-
-	@Override
-	public boolean isPositionSet() {
-		return fen!=null;
 	}
 
 	public void setPositionConsumer(Consumer<String> positionConsumer) {
@@ -54,7 +47,6 @@ public class InstrumentedEngine implements Engine {
 	}
 	
 	public void clear() {
-		this.fen = null;
 		this.goFunction = null;
 		this.moveConsumer = null;
 		this.positionConsumer = null;
