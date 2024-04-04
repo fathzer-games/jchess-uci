@@ -313,7 +313,7 @@ public class UCI implements Runnable, AutoCloseable {
 
 	/** Executes a command.
 	 * @param command The command to execute
-	 * @param returns true if the command was found
+	 * @return true if the command was found
 	 */
 	protected boolean doCommand(final String command) {
     	log(">",command);

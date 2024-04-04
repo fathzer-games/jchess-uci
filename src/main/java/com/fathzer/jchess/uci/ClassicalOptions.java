@@ -65,7 +65,7 @@ public final class ClassicalOptions {
 	
 	/** Gets an spin option to set the number of CPU threads used for searching a position.
 	 * @param trigger The consumer to call when value is changed.
-	 * @param maxValue The default value of the option.
+	 * @param defaultValue The default value of the option.
 	 * @return an option whose name is {@value ClassicalOptions#THREADS_NAME}, the minimal value is 1 and and maximal value is the number of available processors reported by {@code Runtime.getRuntime().availableProcessors()}
 	 */
 	public static SpinOption<Integer> threads(Consumer<Integer> trigger, int defaultValue) {
