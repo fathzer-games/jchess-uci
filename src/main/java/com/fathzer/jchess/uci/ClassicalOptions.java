@@ -26,6 +26,10 @@ public final class ClassicalOptions {
 		super();
 	}
 	
+	/** Gets the standard option to accept Chess 960 games. 
+	 * @param trigger The consumer to call when value is changed.
+	 * @return The standard {@value ClassicalOptions#CHESS960_NAME} option.
+	 */
 	public static CheckOption chess960(Consumer<Boolean> trigger) {
 		return new CheckOption(CHESS960_NAME, trigger, false);
 	}
@@ -50,10 +54,20 @@ public final class ClassicalOptions {
 		return new CheckOption(PONDER_NAME, trigger, defaultValue);
 	}
 	
+	/** Gets an spin option to set the engine strength.
+	 * @param trigger The consumer to call when value is changed.
+	 * @param maxValue The maximum value of the option.
+	 * @return an option whose name is {@value ClassicalOptions#LEVEL_NAME}, the default value is {@code maxValue} and minimal value is 0.
+	 */
 	public static SpinOption<Integer> level(Consumer<Integer> trigger, int maxValue) {
 		return new IntegerSpinOption(LEVEL_NAME, trigger, maxValue, 0, maxValue);
 	}
 	
+	/** Gets an spin option to set the number of CPU threads used for searching a position.
+	 * @param trigger The consumer to call when value is changed.
+	 * @param maxValue The default value of the option.
+	 * @return an option whose name is {@value ClassicalOptions#THREADS_NAME}, the minimal value is 1 and and maximal value is the number of available processors reported by {@code Runtime.getRuntime().availableProcessors()}
+	 */
 	public static SpinOption<Integer> threads(Consumer<Integer> trigger, int defaultValue) {
 		return new IntegerSpinOption(THREADS_NAME, trigger, defaultValue, 1, Runtime.getRuntime().availableProcessors());
 	}

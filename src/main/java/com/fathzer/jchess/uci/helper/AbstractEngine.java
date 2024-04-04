@@ -138,9 +138,14 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 				final EvaluatedMove<M> move = best.get().move();
 				final GoReply goReply = new GoReply(toUCI(move.getContent()));
 				final Info info = new Info(best.get().depth());
+				final TranspositionTable<M> tt = engine.getTranspositionTable();
+				final int entryCount = tt.getEntryCount();
+				if (entryCount>0) {
+					info.setHashFull((int)(1000L*entryCount/tt.getSize()));
+				}
 				info.setScoreBuilder(m -> toScore(toMove(m), move));
 				info.setPvBuilder(m -> {
-					final List<UCIMove> list = engine.getTranspositionTable().collectPV(board, toMove(m), info.getDepth()).stream().map(x -> toUCI(x)).toList();
+					final List<UCIMove> list = tt.collectPV(board, toMove(m), info.getDepth()).stream().map(x -> toUCI(x)).toList();
 					return list.isEmpty() ? Optional.empty() : Optional.of(list);
 				});
 				goReply.setInfo(info);

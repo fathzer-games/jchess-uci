@@ -59,6 +59,7 @@ public class GoReply {
 		private List<UCIMove> extraMoves;
 		private Function<UCIMove, Optional<List<UCIMove>>> pvBuilder;
 		private Function<UCIMove, Optional<Score>> scoreBuilder;
+		private int hashFull;
 		
 		/** Constructor.
 		 * @param depth The search depth.
@@ -68,10 +69,22 @@ public class GoReply {
 			this.extraMoves = Collections.emptyList();
 			this.pvBuilder = m -> Optional.empty();
 			this.scoreBuilder = m -> Optional.empty();
+			this.hashFull = -1;
 		}
 
 		public int getDepth() {
 			return depth;
+		}
+		
+		public int getHashFull() {
+			return hashFull;
+		}
+
+		/** Sets the transposition table occupancy in per mill.
+		 * @param hashFull An integer. -1 if the occupancy is unknown
+		 */
+		public void setHashFull(int hashFull) {
+			this.hashFull = hashFull;
 		}
 
 		public List<UCIMove> getExtraMoves() {
@@ -154,6 +167,12 @@ public class GoReply {
 				builder.append(' ');
 			}
 			builder.append("score ").append(score.get().toUCI());
+		}
+		if (info.hashFull>0) {
+			if (!builder.isEmpty()) {
+				builder.append(' ');
+			}
+			builder.append("hashfull ").append(info.hashFull);
 		}
 		final Optional<List<UCIMove>> pv = info.pvBuilder.apply(bestMove);
 		if (pv.isPresent()) {
