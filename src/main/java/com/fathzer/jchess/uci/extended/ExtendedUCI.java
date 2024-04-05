@@ -39,20 +39,20 @@ public class ExtendedUCI extends UCI {
 			debug(NO_POSITION_DEFINED);
 			return;
 		}
-		if (! (engine instanceof Displayable)) {
+		if (engine instanceof Displayable displayable) {
+			final String result;
+			if (tokens.isEmpty()) {
+				result = displayable.getBoardAsString();
+			} else if (tokens.size()==1 && "fen".equals(tokens.peek())) {
+				result = ((Displayable)getEngine()).getFEN();
+			} else {
+				debug("Unknown display options "+Arrays.asList(tokens));
+				return;
+			}
+			out(result);
+		} else {
 			debug("position display is not supported by this engine");
 		}
-		//FIXME Engine could be non displayable here
-		final String result;
-		if (tokens.isEmpty()) {
-			result = ((Displayable)getEngine()).getBoardAsString();
-		} else if (tokens.size()==1 && "fen".equals(tokens.peek())) {
-			result = ((Displayable)getEngine()).getFEN();
-		} else {
-			debug("Unknown display options "+Arrays.asList(tokens));
-			return;
-		}
-		out(result);
 	}
 
 	protected <M> void doPerft(Deque<String> tokens) {
