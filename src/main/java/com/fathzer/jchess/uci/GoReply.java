@@ -154,14 +154,20 @@ public class GoReply {
 	 * @return The line or an empty optional if no information is available
 	 */
 	public Optional<String> getMainInfoString() {
-		if (info==null) {
-			return Optional.empty();
-		}
+		return getInfoString(0);
+	}
+
+	/** Gets the uci info line to return just before sending the reply.
+	 * @param index The move index (0 for the best move or the index or the extra moves passed to {@code Info#setExtraMoves(List)} +1
+	 * @return The line or an empty optional if no information is available
+	 */
+	public Optional<String> getInfoString(int index) {
 		final StringBuilder builder = new StringBuilder();
 		if (info.depth>0) {
 			builder.append("depth ").append(info.depth);
 		}
-		final Optional<Score> score = info.scoreBuilder.apply(bestMove);
+		final UCIMove move = index==0 ? bestMove : info.extraMoves.get(index-1);
+		final Optional<Score> score = info.scoreBuilder.apply(move);
 		if (score.isPresent()) {
 			if (!builder.isEmpty()) {
 				builder.append(' ');
@@ -174,13 +180,13 @@ public class GoReply {
 			}
 			builder.append("hashfull ").append(info.hashFull);
 		}
-		final Optional<List<UCIMove>> pv = info.pvBuilder.apply(bestMove);
+		final Optional<List<UCIMove>> pv = info.pvBuilder.apply(move);
 		if (pv.isPresent()) {
 			if (!builder.isEmpty()) {
 				builder.append(' ');
 			}
 			final String moves = String.join(" ", pv.get().stream().map(UCIMove::toString).toList());
-			builder.append("multipv 1 pv ").append(moves);
+			builder.append("multipv ").append(index+1).append(" pv ").append(moves);
 		}
 		return builder.isEmpty() ? Optional.empty() : Optional.of("info "+builder);
 	}

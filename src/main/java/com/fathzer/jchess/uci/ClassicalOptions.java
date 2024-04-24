@@ -42,8 +42,8 @@ public final class ClassicalOptions {
 		return new CheckOption(LIMIT_STRENGTH_NAME, trigger, false);
 	}
 	
-	public static SpinOption<Integer> multiPV(Consumer<Integer> trigger, int maxValue) {
-		return new IntegerSpinOption(MULTI_PV_NAME, trigger, 1, 1, maxValue);
+	public static SpinOption<Integer> multiPV(Consumer<Integer> trigger) {
+		return new IntegerSpinOption(MULTI_PV_NAME, trigger, 1, 1, 256);
 	}
 	
 	public static CheckOption ownBook(Consumer<Boolean> trigger, boolean defaultValue) {

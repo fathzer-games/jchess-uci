@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import com.fathzer.games.MoveGenerator;
 import com.fathzer.games.MoveGenerator.MoveConfidence;
@@ -14,7 +15,7 @@ import com.fathzer.games.ai.evaluation.Evaluation;
 import com.fathzer.games.ai.evaluation.Evaluation.Type;
 import com.fathzer.games.ai.evaluation.Evaluator;
 import com.fathzer.games.ai.iterativedeepening.IterativeDeepeningEngine;
-import com.fathzer.games.ai.iterativedeepening.IterativeDeepeningEngine.BestMove;
+import com.fathzer.games.ai.iterativedeepening.SearchHistory;
 import com.fathzer.games.ai.time.TimeManager;
 import com.fathzer.games.ai.transposition.TranspositionTable;
 import com.fathzer.jchess.uci.GoReply;
@@ -98,6 +99,7 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 			options.add(new ComboOption("evaluation", this::setEvaluator, defaultEvaluator, evaluatorBuilders.keySet()));
 		}
 		options.add(ClassicalOptions.threads(this.engine::setParallelism, defaultThreads));
+		options.add(ClassicalOptions.multiPV(this.engine.getDeepeningPolicy()::setSize));
 		options.add(new IntegerSpinOption("depth", this.engine.getDeepeningPolicy()::setDepth, defaultDepth, 1, 128));
 		options.add(new LongSpinOption("maxtime", this.engine.getDeepeningPolicy()::setMaxTime, defaultMaxTime, 1, Long.MAX_VALUE));
 		return options;
@@ -130,24 +132,27 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 				final UCIEngineSearchConfiguration<M, B> c = new UCIEngineSearchConfiguration<>(timeManager);
 				final UCIEngineSearchConfiguration.EngineConfiguration previous = c.configure(engine, options, board);
 				final List<M> candidates = options.getMoveToSearch().stream().map(AbstractEngine.this::toMove).toList();
-				final Optional<BestMove<M>> best = engine.getBestMove(board, candidates.isEmpty() ? null : candidates);
+				final SearchHistory<M> search = engine.getBestMoves(board, candidates.isEmpty() ? null : candidates);
 				c.set(engine, previous);
-				if (best.isEmpty()) {
+				if (search.isEmpty()) {
 					return new GoReply(null);
 				}
-				final EvaluatedMove<M> move = best.get().move();
+				final EvaluatedMove<M> move = getChoice(search);
 				final GoReply goReply = new GoReply(toUCI(move.getContent()));
-				final Info info = new Info(best.get().depth());
+				final Info info = new Info(search.getDepth());
 				final TranspositionTable<M> tt = engine.getTranspositionTable();
 				final int entryCount = tt.getEntryCount();
 				if (entryCount>0) {
 					info.setHashFull((int)(1000L*entryCount/tt.getSize()));
 				}
-				info.setScoreBuilder(m -> toScore(toMove(m), move));
+				final List<EvaluatedMove<M>> bestMoves = search.getBestMoves();
+				final Map<String, Optional<Score>> scores = bestMoves.stream().collect(Collectors.toMap(em -> toUCI(em.getContent()).toString(), em -> toScore(em.getEvaluation())));
+				info.setScoreBuilder(m -> scores.get(m.toString()));
 				info.setPvBuilder(m -> {
 					final List<UCIMove> list = tt.collectPV(board, toMove(m), info.getDepth()).stream().map(x -> toUCI(x)).toList();
 					return list.isEmpty() ? Optional.empty() : Optional.of(list);
 				});
+				info.setExtraMoves(bestMoves.stream().filter(em -> !move.getContent().equals(em.getContent())).map(em->toUCI(em.getContent())).toList());
 				goReply.setInfo(info);
 				return goReply;
 			}
@@ -160,10 +165,13 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 		};
 	}
 	
-	private Optional<Score> toScore(M m, EvaluatedMove<M> known) {
-		final Evaluation evaluation = known.getEvaluation();
+	private EvaluatedMove<M> getChoice(SearchHistory<M> history) {
+		return history.getBestMoves().get(0);
+	}
+	
+	private Optional<Score> toScore(Evaluation evaluation) {
 		final Type type = evaluation.getType();
-		if (!m.equals(known.getContent()) || type==Type.UNKNOWN) {
+		if (type==Type.UNKNOWN) {
 			return Optional.empty();
 		}
 		final Score score;

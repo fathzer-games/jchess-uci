@@ -210,7 +210,12 @@ public class UCI implements Runnable, AutoCloseable {
 				final boolean started = doBackground(() -> {
 					final GoReply goReply = task.get();
 					final Optional<String> mainInfo = goReply.getMainInfoString();
-					mainInfo.ifPresent(this::out);
+					if (mainInfo.isPresent()) {
+						this.out(mainInfo.get());
+						for (int i = 1; i <= goReply.getInfo().get().getExtraMoves().size(); i++) {
+							this.out(goReply.getInfoString(i).get());
+						}
+					}
 					out(goReply.toString());
 				}, task::stop, e -> err(GO_CMD, e));
 				if (!started) {

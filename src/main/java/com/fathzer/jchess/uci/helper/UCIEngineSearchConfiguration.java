@@ -14,10 +14,12 @@ public class UCIEngineSearchConfiguration<M, B extends MoveGenerator<M>> {
 	public static class EngineConfiguration {
 		private long maxTime;
 		private int depth;
+		private boolean deepenOnForced;
 		
 		private EngineConfiguration(IterativeDeepeningEngine<?, ?> engine) {
 			maxTime = engine.getDeepeningPolicy().getMaxTime();
 			depth = engine.getDeepeningPolicy().getDepth();
+			deepenOnForced = engine.getDeepeningPolicy().isDeepenOnForced();
 		}
 	}
 
@@ -35,6 +37,7 @@ public class UCIEngineSearchConfiguration<M, B extends MoveGenerator<M>> {
 		}
 		if (options.getDepth()>0) {
 			engine.getDeepeningPolicy().setDepth(options.getDepth());
+			engine.getDeepeningPolicy().setDeepenOnForced(true);
 		}
 		if (timeOptions.getMoveTimeMs()>0) {
 			engine.getDeepeningPolicy().setMaxTime(timeOptions.getMoveTimeMs());
@@ -50,6 +53,7 @@ public class UCIEngineSearchConfiguration<M, B extends MoveGenerator<M>> {
 	public void set(IterativeDeepeningEngine<M, B> engine, EngineConfiguration c) {
 		engine.getDeepeningPolicy().setMaxTime(c.maxTime);
 		engine.getDeepeningPolicy().setDepth(c.depth);
+		engine.getDeepeningPolicy().setDeepenOnForced(c.deepenOnForced);
 	}
 	
 	public long getMaxTime(B board, long remainingMs, long incrementMs, int movesToGo) {
