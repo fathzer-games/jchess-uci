@@ -137,7 +137,7 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 				if (search.isEmpty()) {
 					return new GoReply(null);
 				}
-				final EvaluatedMove<M> move = getChoice(search);
+				final EvaluatedMove<M> move = getSelected(board, search);
 				final GoReply goReply = new GoReply(toUCI(move.getContent()));
 				final Info info = new Info(search.getDepth());
 				final TranspositionTable<M> tt = engine.getTranspositionTable();
@@ -165,7 +165,7 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 		};
 	}
 	
-	private EvaluatedMove<M> getChoice(SearchHistory<M> history) {
+	protected EvaluatedMove<M> getSelected(B board, SearchHistory<M> history) {
 		return history.getBestMoves().get(0);
 	}
 	
