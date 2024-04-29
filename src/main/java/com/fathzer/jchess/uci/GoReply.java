@@ -154,7 +154,7 @@ public class GoReply {
 	 * @return The line or an empty optional if no information is available
 	 */
 	public Optional<String> getMainInfoString() {
-		return getInfoString(0);
+		return bestMove==null ? Optional.empty() : getInfoString(0);
 	}
 
 	/** Gets the uci info line to return just before sending the reply.
