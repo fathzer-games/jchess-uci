@@ -93,6 +93,11 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 	protected abstract TranspositionTable<M> buildTranspositionTable(int sizeInMB);
 	
 	@Override
+	public void newGame() {
+		engine.newGame();
+	}
+
+	@Override
 	public List<Option<?>> getOptions() {
 		final List<Option<?>> options = new ArrayList<>();
 		if (!evaluatorBuilders.isEmpty()) {
@@ -152,7 +157,7 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 					final List<UCIMove> list = tt.collectPV(board, toMove(m), info.getDepth()).stream().map(x -> toUCI(x)).toList();
 					return list.isEmpty() ? Optional.empty() : Optional.of(list);
 				});
-				info.setExtraMoves(bestMoves.stream().filter(em -> !move.getContent().equals(em.getContent())).map(em->toUCI(em.getContent())).toList());
+				info.setExtraMoves(bestMoves.stream().filter(em -> !move.getContent().equals(em.getContent())).limit(engine.getDeepeningPolicy().getSize()-1).map(em->toUCI(em.getContent())).toList());
 				goReply.setInfo(info);
 				return goReply;
 			}
