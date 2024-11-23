@@ -1,8 +1,11 @@
 package com.fathzer.jchess.uci;
+
 import static org.junit.jupiter.api.Assertions.*;
+import static org.awaitility.Awaitility.*;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -126,5 +129,23 @@ class UCITest {
 		assertFalse(uci.isPositionSet());
 		
 		//TODO Test move related things
+	}
+	
+	@Test
+	void bug20241123() {
+		// Exceptions thrown by engine during the go command were not reported by the logger
+		uci.post("ucinewgame", 10);
+		assertFalse(uci.isPositionSet());
+		engine.setPositionConsumer(s -> {});
+		assertTrue(uci.post("position fen toto", 10));
+		
+		engine.setGoFunction(s -> new LongRunningTask<>() {
+			@Override
+			public GoReply get() {
+				throw new UnsupportedOperationException("I'm a buggy engine");
+			}
+		});
+		uci.post("go", 10);
+		await().atMost(200, TimeUnit.MILLISECONDS).until(() -> uci.getExceptions().getOrDefault("go", new IllegalArgumentException()).getClass()==UnsupportedOperationException.class);
 	}
 }

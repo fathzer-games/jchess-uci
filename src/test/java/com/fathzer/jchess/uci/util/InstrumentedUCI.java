@@ -102,4 +102,8 @@ public class InstrumentedUCI extends UCI {
 	public List<String> out() {
 		return output;
 	}
+	
+	public Map<String, Throwable> getExceptions() {
+		return exceptions;
+	}
 }

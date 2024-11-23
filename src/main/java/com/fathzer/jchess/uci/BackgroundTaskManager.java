@@ -30,6 +30,7 @@ class BackgroundTaskManager implements AutoCloseable {
 					task.run.run();
 					this.current.set(null);
 				} catch (Exception e) {
+					task.logger.accept(e);
 					stop();
 				}
 			});
