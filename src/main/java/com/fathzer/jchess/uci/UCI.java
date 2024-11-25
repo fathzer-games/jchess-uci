@@ -37,7 +37,14 @@ import com.fathzer.jchess.uci.parameters.Parser;
  */
 public class UCI implements Runnable, AutoCloseable {
 	public static final String INIT_COMMANDS_PROPERTY_FILE = "uciInitCommands";
-	
+
+	@FunctionalInterface
+	/** A runnable that can throw an exception.
+	 */
+	public interface ThrowingRunnable {
+		void run() throws Exception;
+	}
+
 	private static final BufferedReader IN = new BufferedReader(new InputStreamReader(System.in));
 	private static final String MOVES = "moves";
 	private static final String ENGINE_CMD = "engine";
@@ -196,7 +203,7 @@ public class UCI implements Runnable, AutoCloseable {
 	 * @param logger Where to send the exceptions 
 	 * @return true if the task is launched, false if another task is already running.
 	 */
-	protected boolean doBackground(Runnable task, Runnable stopper, Consumer<Exception> logger) {
+	protected boolean doBackground(ThrowingRunnable task, Runnable stopper, Consumer<Exception> logger) {
 		return backTasks.doBackground(new Task(task, stopper, logger));
 	}
 
@@ -206,9 +213,9 @@ public class UCI implements Runnable, AutoCloseable {
 		} else {
 			final Optional<GoParameters> goOptions = parse(GoParameters::new, GoParameters.PARSER, tokens);
 			if (goOptions.isPresent()) {
-				final LongRunningTask<GoReply> task = engine.go(goOptions.get());
+				final StoppableTask<GoReply> task = engine.go(goOptions.get());
 				final boolean started = doBackground(() -> {
-					final GoReply goReply = task.get();
+					final GoReply goReply = task.call();
 					final Optional<String> mainInfo = goReply.getMainInfoString();
 					if (mainInfo.isPresent()) {
 						this.out(mainInfo.get());

@@ -139,10 +139,14 @@ class UCITest {
 		engine.setPositionConsumer(s -> {});
 		assertTrue(uci.post("position fen toto", 10));
 		
-		engine.setGoFunction(s -> new LongRunningTask<>() {
+		engine.setGoFunction(s -> new StoppableTask<>() {
 			@Override
-			public GoReply get() {
+			public GoReply call() {
 				throw new UnsupportedOperationException("I'm a buggy engine");
+			}
+
+			@Override
+			public void stop() {
 			}
 		});
 		uci.post("go", 10);

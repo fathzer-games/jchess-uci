@@ -5,14 +5,14 @@ import java.util.function.Function;
 
 import com.fathzer.jchess.uci.Engine;
 import com.fathzer.jchess.uci.GoReply;
-import com.fathzer.jchess.uci.LongRunningTask;
+import com.fathzer.jchess.uci.StoppableTask;
 import com.fathzer.jchess.uci.UCIMove;
 import com.fathzer.jchess.uci.parameters.GoParameters;
 
 public class InstrumentedEngine implements Engine {
 	private Consumer<String> positionConsumer;
 	private Consumer<UCIMove> moveConsumer;
-	private Function<GoParameters, LongRunningTask<GoReply>> goFunction;
+	private Function<GoParameters, StoppableTask<GoReply>> goFunction;
 
 	@Override
 	public String getId() {
@@ -30,7 +30,7 @@ public class InstrumentedEngine implements Engine {
 	}
 
 	@Override
-	public LongRunningTask<GoReply> go(GoParameters params) {
+	public StoppableTask<GoReply> go(GoParameters params) {
 		return goFunction.apply(params);
 	}
 
@@ -42,7 +42,7 @@ public class InstrumentedEngine implements Engine {
 		this.moveConsumer = moveConsumer;
 	}
 
-	public void setGoFunction(Function<GoParameters, LongRunningTask<GoReply>> goFunction) {
+	public void setGoFunction(Function<GoParameters, StoppableTask<GoReply>> goFunction) {
 		this.goFunction = goFunction;
 	}
 	

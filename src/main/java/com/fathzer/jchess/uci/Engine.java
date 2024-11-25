@@ -105,7 +105,7 @@ public interface Engine {
 	 * <li>The supplier should be cooperative with the stopper; It should end as quickly as possible when stopper is invoked and <b>always</b> return a move.</li>
 	 * </ul>
 	 * @param params The go parameters.
-	 * @return A long running task able to compute the engine's move.
+	 * @return A task able to compute the engine's move.
 	 */
-	LongRunningTask<GoReply> go(GoParameters params);
+	StoppableTask<GoReply> go(GoParameters params);
 }

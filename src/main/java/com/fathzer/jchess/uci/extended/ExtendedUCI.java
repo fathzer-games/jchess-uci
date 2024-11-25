@@ -15,7 +15,7 @@ import com.fathzer.games.perft.PerfTResult;
 import com.fathzer.games.perft.PerfTTestData;
 import com.fathzer.games.perft.TestableMoveGeneratorBuilder;
 import com.fathzer.jchess.uci.Engine;
-import com.fathzer.jchess.uci.LongRunningTask;
+import com.fathzer.jchess.uci.StoppableTask;
 import com.fathzer.jchess.uci.UCI;
 import com.fathzer.jchess.uci.parameters.PerfStatsParameters;
 import com.fathzer.jchess.uci.parameters.PerfTParameters;
@@ -67,22 +67,16 @@ public class ExtendedUCI extends UCI {
 		final Optional<PerfTParameters> params = parse(PerfTParameters::new, PerfTParameters.PARSER, tokens);
 		if (params.isPresent()) {
 			@SuppressWarnings("unchecked")
-			final LongRunningTask<PerfTResult<M>> task = new PerftTask<>((MoveGeneratorSupplier<M>)engine, params.get());
+			final StoppableTask<PerfTResult<M>> task = new PerftTask<>((MoveGeneratorSupplier<M>)engine, params.get());
 			if (!doBackground(() -> doPerft(task, params.get()), task::stop, e -> err(PERFT_COMMAND,e))) {
 				debug("Engine is already working");
 			}
 		}
 	}
-	
-//	private void background(Runnable task, Runnable stopper) {
-//		if (!doBackground(task, stopper, e -> out(e,0))) {
-//			debug("Engine is already working");
-//		}
-//	}
 
-	private <M> void doPerft(LongRunningTask<PerfTResult<M>> task, PerfTParameters params) {
+	private <M> void doPerft(StoppableTask<PerfTResult<M>> task, PerfTParameters params) throws Exception {
 		final long start = System.currentTimeMillis(); 
-		final PerfTResult<M> result = task.get();
+		final PerfTResult<M> result = task.call();
 
 		final long duration = System.currentTimeMillis() - start;
 		if (result.isInterrupted()) {

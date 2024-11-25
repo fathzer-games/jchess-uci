@@ -6,10 +6,10 @@ import com.fathzer.games.MoveGenerator;
 import com.fathzer.games.perft.PerfT;
 import com.fathzer.games.perft.PerfTResult;
 import com.fathzer.games.util.exec.ContextualizedExecutor;
-import com.fathzer.jchess.uci.LongRunningTask;
+import com.fathzer.jchess.uci.StoppableTask;
 import com.fathzer.jchess.uci.parameters.PerfTParameters;
 
-class PerftTask<M> extends LongRunningTask<PerfTResult<M>> {
+class PerftTask<M> implements StoppableTask<PerfTResult<M>> {
 	private PerfT<M> perft;
 	private final Supplier<MoveGenerator<M>> engine;
 	private final PerfTParameters params;
@@ -21,7 +21,7 @@ class PerftTask<M> extends LongRunningTask<PerfTResult<M>> {
 	}
 
 	@Override
-	public PerfTResult<M> get() {
+	public PerfTResult<M> call() {
 		try (ContextualizedExecutor<MoveGenerator<M>> exec = new ContextualizedExecutor<>(params.getParallelism())) {
 			this.perft = new PerfT<>(exec);
 			if (params.isLegal()) {
@@ -36,7 +36,6 @@ class PerftTask<M> extends LongRunningTask<PerfTResult<M>> {
 
 	@Override
 	public void stop() {
-		super.stop();
 		perft.interrupt();
 	}
 

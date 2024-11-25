@@ -5,21 +5,23 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+import com.fathzer.games.util.exec.CustomThreadFactory;
+import com.fathzer.jchess.uci.UCI.ThrowingRunnable;
+
 class BackgroundTaskManager implements AutoCloseable {
 	static class Task {
 		private final Consumer<Exception> logger;
-		private final Runnable run;
+		private final ThrowingRunnable run;
 		private final Runnable stopTask;
 		
-		Task(Runnable task, Runnable stopTask, Consumer<Exception> logger) {
+		Task(ThrowingRunnable task, Runnable stopTask, Consumer<Exception> logger) {
 			this.run = task;
 			this.stopTask = stopTask;
 			this.logger = logger;
 		}
 	}
-	
-	
-	private final ExecutorService exec = Executors.newFixedThreadPool(1);
+
+	private final ExecutorService exec = Executors.newFixedThreadPool(1, new CustomThreadFactory(()->"Stoppable Tasks", true));
 	private final AtomicReference<Task> current = new AtomicReference<>();
 	
 	boolean doBackground(Task task) {
