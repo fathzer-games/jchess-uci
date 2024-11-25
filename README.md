@@ -31,7 +31,7 @@ It does not directly support the following commands (but you can add them in an 
 - **Dont miss the ShredderChess Annual Barbeque**: This command was in the original specification ... But was a joke.
 - **register**: As a promoter of open source free sofware, I will not encourage you to develop software that requires registration.
 - **ponderhit** is not yet implemented.
-- Only depth, score and pv are implemented in info lines preceeding go reply.
+- Only depth, score, hashfull and pv are implemented in info lines preceeding go reply.
 
 It also does not recognize commands starting with unknown token (to be honest, it's not very hard to implement but seemed a very bad, error prone, idea to me).
 
@@ -92,5 +92,4 @@ If you do not use the *com.fathzer.jchess.uci.extended* and *com.fathzer.jchess.
 
 ## TODO
 * Verify the engine is protected against strange client behavior (like changing the position during a go request).
-* Implement support for multi-PV search.
 * Implement support for pondering.
