@@ -41,7 +41,7 @@ public class UCI implements Runnable, AutoCloseable {
 	@FunctionalInterface
 	/** A runnable that can throw an exception.
 	 */
-	public interface ThrowingRunnable {
+	public static interface ThrowingRunnable {
 		void run() throws Exception;
 	}
 
@@ -214,22 +214,24 @@ public class UCI implements Runnable, AutoCloseable {
 			final Optional<GoParameters> goOptions = parse(GoParameters::new, GoParameters.PARSER, tokens);
 			if (goOptions.isPresent()) {
 				final StoppableTask<GoReply> task = engine.go(goOptions.get());
-				final boolean started = doBackground(() -> {
-					final GoReply goReply = task.call();
-					final Optional<String> mainInfo = goReply.getMainInfoString();
-					if (mainInfo.isPresent()) {
-						this.out(mainInfo.get());
-						for (int i = 1; i <= goReply.getInfo().get().getExtraMoves().size(); i++) {
-							this.out(goReply.getInfoString(i).get());
-						}
-					}
-					out(goReply.toString());
-				}, task::stop, e -> err(GO_CMD, e));
+				final boolean started = doBackground(() -> processGo(task), task::stop, e -> err(GO_CMD, e));
 				if (!started) {
 					debug("Engine is already working");
 				}
 			}
 		}
+	}
+
+	private void processGo(final StoppableTask<GoReply> task) throws Exception {
+		final GoReply goReply = task.call();
+		final Optional<String> mainInfo = goReply.getMainInfoString();
+		if (mainInfo.isPresent()) {
+			this.out(mainInfo.get());
+			for (int i = 1; i <= goReply.getInfo().get().getExtraMoves().size(); i++) {
+				this.out(goReply.getInfoString(i).get());
+			}
+		}
+		out(goReply.toString());
 	}
 
 	protected <T> Optional<T> parse(Supplier<T> builder, Parser<T> parser, Deque<String> tokens) {

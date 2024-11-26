@@ -54,6 +54,7 @@ class AbstractEngineTest {
 
 			@Override
 			public void setStartPosition(String fen) {
+				// This is a fake engine, it ignores the position
 			}
 
 			@Override
@@ -72,9 +73,8 @@ class AbstractEngineTest {
 			}
 		};
 		
-		GoParameters params = new GoParameters();
 		// Check settings changes engine config
-		params = new GoParameters();
+		GoParameters params = new GoParameters();
 		GoParameters.PARSER.parse(params, new LinkedList<>(Arrays.asList(("movetime 1000").split(" "))));
 		StoppableTask<GoReply> task = ae.go(params);
 		assertThrows(RuntimeException.class, () -> task.call());

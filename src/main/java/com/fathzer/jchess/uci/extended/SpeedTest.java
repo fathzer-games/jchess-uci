@@ -1,6 +1,7 @@
 package com.fathzer.jchess.uci.extended;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 import com.fathzer.games.MoveGenerator;
 import com.fathzer.games.ai.evaluation.EvaluatedMove;
@@ -17,15 +18,7 @@ import com.fathzer.jchess.uci.helper.AbstractEngine;
  */
 public class SpeedTest<M, B extends MoveGenerator<M>> {
 
-	private static class Result<M> {
-		private String fen;
-		private List<EvaluatedMove<M>> moves;
-		
-		public Result(String fen, List<EvaluatedMove<M>> moves) {
-			super();
-			this.fen = fen;
-			this.moves = moves;
-		}
+	private static record Result<M> (String fen, List<EvaluatedMove<M>> moves, Consumer<CharSequence> out) {
 
 		private void assertEquals(Object expected, Object actual) {
 			if (!expected.equals(actual)) {
@@ -42,24 +35,26 @@ public class SpeedTest<M, B extends MoveGenerator<M>> {
 		}
 		
 		private void show() {
-			System.out.println(fen);
-			System.out.println(moves);
+			out.accept(fen);
+			out.accept(moves.toString());
 		}
 	}
 
-	private AbstractEngine<M, B> uciEngine;
+	private final AbstractEngine<M, B> uciEngine;
+	private final Consumer<CharSequence> out;
 
 	/** Creates the test.
 	 * @param engine The engine to test
 	 */
-	public SpeedTest(AbstractEngine<M, B> engine) {
+	public SpeedTest(AbstractEngine<M, B> engine, Consumer<CharSequence> out) {
 		this.uciEngine = engine;
+		this.out = out;
 	}
 	
 	private Result<M> fill(String fen) {
 		uciEngine.newGame();
 		uciEngine.setStartPosition(fen);
-		return new Result<>(fen, uciEngine.getEngine().getBestMoves(uciEngine.get()).getBestMoves());
+		return new Result<>(fen, uciEngine.getEngine().getBestMoves(uciEngine.get()).getBestMoves(), out);
 	}
 	
 	/** Launches the test.

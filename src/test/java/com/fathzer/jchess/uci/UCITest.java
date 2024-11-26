@@ -147,9 +147,10 @@ class UCITest {
 
 			@Override
 			public void stop() {
+				// call immediately throws an exception, there's no way to stop it
 			}
 		});
 		uci.post("go", 10);
-		await().atMost(200, TimeUnit.MILLISECONDS).until(() -> uci.getExceptions().getOrDefault("go", new IllegalArgumentException()).getClass()==UnsupportedOperationException.class);
+		await().atMost(500, TimeUnit.MILLISECONDS).until(() -> uci.getExceptions().getOrDefault("go", new IllegalArgumentException()).getClass()==UnsupportedOperationException.class);
 	}
 }

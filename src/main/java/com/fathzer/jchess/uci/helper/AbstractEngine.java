@@ -160,7 +160,7 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 						final List<UCIMove> list = tt.collectPV(board, toMove(m), info.getDepth()).stream().map(x -> toUCI(x)).toList();
 						return list.isEmpty() ? Optional.empty() : Optional.of(list);
 					});
-					info.setExtraMoves(bestMoves.stream().filter(em -> !move.getContent().equals(em.getContent())).limit(engine.getDeepeningPolicy().getSize()-1).map(em->toUCI(em.getContent())).toList());
+					info.setExtraMoves(bestMoves.stream().filter(em -> !move.getContent().equals(em.getContent())).limit(engine.getDeepeningPolicy().getSize()-1L).map(em->toUCI(em.getContent())).toList());
 					goReply.setInfo(info);
 					return goReply;
 				} finally {
