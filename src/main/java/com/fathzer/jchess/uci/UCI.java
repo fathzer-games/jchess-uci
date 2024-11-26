@@ -26,6 +26,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import com.fathzer.jchess.uci.BackgroundTaskManager.Task;
+import com.fathzer.jchess.uci.GoReply.Info;
 import com.fathzer.jchess.uci.option.IntegerSpinOption;
 import com.fathzer.jchess.uci.option.Option;
 import com.fathzer.jchess.uci.parameters.GoParameters;
@@ -37,13 +38,6 @@ import com.fathzer.jchess.uci.parameters.Parser;
  */
 public class UCI implements Runnable, AutoCloseable {
 	public static final String INIT_COMMANDS_PROPERTY_FILE = "uciInitCommands";
-
-	@FunctionalInterface
-	/** A runnable that can throw an exception.
-	 */
-	public static interface ThrowingRunnable {
-		void run() throws Exception;
-	}
 
 	private static final BufferedReader IN = new BufferedReader(new InputStreamReader(System.in));
 	private static final String MOVES = "moves";
@@ -227,8 +221,10 @@ public class UCI implements Runnable, AutoCloseable {
 		final Optional<String> mainInfo = goReply.getMainInfoString();
 		if (mainInfo.isPresent()) {
 			this.out(mainInfo.get());
-			for (int i = 1; i <= goReply.getInfo().get().getExtraMoves().size(); i++) {
-				this.out(goReply.getInfoString(i).get());
+			final Optional<Info> info = goReply.getInfo();
+			final int nb = info.isPresent() ? info.get().getExtraMoves().size() : 0;
+			for (int i = 1; i <= nb; i++) {
+				goReply.getInfoString(i).ifPresent(this::out);
 			}
 		}
 		out(goReply.toString());

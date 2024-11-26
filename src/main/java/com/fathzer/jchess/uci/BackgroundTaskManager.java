@@ -6,7 +6,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import com.fathzer.games.util.exec.CustomThreadFactory;
-import com.fathzer.jchess.uci.UCI.ThrowingRunnable;
 
 class BackgroundTaskManager implements AutoCloseable {
 	static class Task {

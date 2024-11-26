@@ -157,7 +157,7 @@ public class GoReply {
 		return bestMove==null ? Optional.empty() : getInfoString(0);
 	}
 
-	/** Gets the uci info line to return just before sending the reply.
+	/** Gets a uci info line to return before sending the reply.
 	 * @param index The move index (0 for the best move or the index or the extra moves passed to {@code Info#setExtraMoves(List)} +1
 	 * @return The line or an empty optional if no information is available
 	 */
