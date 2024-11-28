@@ -1,0 +1,1 @@
+File required by src/test/com.fathzer.jchess.uci.helper.DeferredReadBookTest.java
