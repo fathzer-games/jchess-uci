@@ -65,7 +65,7 @@ It can also be used to test move generator's performance as it outputs the numbe
   A way to easily do that is to add the [com.fathzer:jchess-perft-dataset](https://central.sonatype.com/artifact/com.fathzer/jchess-perft-dataset) artifact to your classpath, then override `readTestData`:  
 ```java
 protected Collection<PerfTTestData> readTestData() {
-	try (InputStream stream = MyUCISubclass.class.getResourceAsStream("com/fathzer/jchess/perft/Perft.txt")) {
+	try (InputStream stream = MyUCISubclass.class.getResourceAsStream("/com/fathzer/jchess/perft/Perft.txt")) {
 		return new PerfTParser().withStartPositionPrefix("position fen").withStartPositionCustomizer(s -> s+" 0 1").read(stream, StandardCharsets.UTF_8);
 	} catch (IOException e) {
 		throw new UncheckedIOException(e);
