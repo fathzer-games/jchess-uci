@@ -51,6 +51,21 @@ public class SpeedTest<M, B extends MoveGenerator<M>> {
 		this.out = out;
 	}
 	
+	/** Checks if move generator implements the standard three fold repetition in its getContextualStatus method.
+	 * <br>Some move generators speed up there draw by repetition detection by checking only for two repetitions.
+	 * It doesn't change the best move detection, but sometimes, it could change other move's evaluation (see example below).
+	 * So, in "real life", it doesn't matter because the best move will still be the good one. But if you use the engine for
+	 * analysis it could lead to wrong results.
+	 * <br><br>Example with fen 7k/5p2/5PQN/5PPK/6PP/8/8/8 w - - 6 5:
+	 * <br>Here the second best move pv is check the king with the rook, opponent move is forced, then move back the rook to
+	 * its initial position, opponent is forced again, then ... play the best move which is a mat.
+	 * <br>With two repetitions test, this mat is considered as a draw.
+	 * @return true by default
+	 */
+	protected boolean hasRegularThreeFoldRepetitionDetection() {
+		return true;
+	}
+	
 	private Result<M> fill(String fen) {
 		uciEngine.newGame();
 		uciEngine.setStartPosition(fen);
@@ -106,12 +121,13 @@ public class SpeedTest<M, B extends MoveGenerator<M>> {
 		mv.assertEquals(Type.WIN, max.getType());
 		mv.assertEquals(1, max.getCountToEnd());
 		mv.assertEquals(UCIMove.from("c3c2"), uciEngine.toUCI(mv.moves.get(0).getContent()));
-//		max = mv.moves.get(1).getEvaluation();
-		//TODO iterative engine fails to find the second best move in tree, probably because of deepening interruption by first mat
-		// Make a test when it will be fixed with a second move that is a MAT in 3 move (see commented code). 
-//		mv.assertEquals(Type.WIN, max.getType());
-//		mv.assertEquals(3, max.getCountToEnd());
-//		mv.assertEquals(Type.EVAL, mv.moves.get(2).getEvaluation().getType());
+		if (hasRegularThreeFoldRepetitionDetection()) {
+			// make this test only if the move generator's getContextualStatus method implements the three fold repetition detection
+			max = mv.moves.get(1).getEvaluation();
+			mv.assertEquals(Type.WIN, max.getType());
+			mv.assertEquals(3, max.getCountToEnd());
+			mv.assertEquals(Type.EVAL, mv.moves.get(2).getEvaluation().getType());
+		}
 		
 		// Check in 2
 		mv = fill("8/8/8/8/1B6/NN6/pk1K4/8 w - - 0 1");
