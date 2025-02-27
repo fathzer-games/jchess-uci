@@ -1,11 +1,12 @@
 package com.fathzer.jchess.uci.extended;
 
+import java.util.concurrent.ForkJoinPool;
 import java.util.function.Supplier;
 
 import com.fathzer.games.MoveGenerator;
-import com.fathzer.games.perft.PerfT;
+import com.fathzer.games.perft.PerfTBuilder;
 import com.fathzer.games.perft.PerfTResult;
-import com.fathzer.games.util.exec.ContextualizedExecutor;
+import com.fathzer.games.perft.PerfT;
 import com.fathzer.jchess.uci.StoppableTask;
 import com.fathzer.jchess.uci.parameters.PerfTParameters;
 
@@ -22,17 +23,22 @@ class PerftTask<M> implements StoppableTask<PerfTResult<M>> {
 
 	@Override
 	public PerfTResult<M> call() {
-		try (ContextualizedExecutor<MoveGenerator<M>> exec = new ContextualizedExecutor<>(params.getParallelism())) {
-			this.perft = new PerfT<>(exec);
-			if (params.isLegal()) {
-				this.perft.setLegalMoves(true);
-				if (!params.isPlayLeaves()) {
-					this.perft.setPlayLeaves(false);
-				}
+		final PerfTBuilder<M> builder = new PerfTBuilder<>();
+		if (params.isLegal()) {
+			builder.setLegalMoves(true);
+			if (!params.isPlayLeaves()) {
+				builder.setPlayLeaves(false);
 			}
-			return perft.divide(params.getDepth(), engine.get());
 		}
-	}
+		final ForkJoinPool exec = new ForkJoinPool(params.getParallelism());
+		try {
+			builder.setExecutor(exec);
+			this.perft = builder.build(engine.get(), params.getDepth());
+			return perft.get();
+		} finally {
+			exec.shutdown();
+		}
+	} 
 
 	@Override
 	public void stop() {

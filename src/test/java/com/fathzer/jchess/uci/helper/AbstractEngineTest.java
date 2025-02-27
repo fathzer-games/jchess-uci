@@ -63,7 +63,7 @@ class AbstractEngineTest {
 			}
 
 			@Override
-			protected TranspositionTable<String> buildTranspositionTable(int sizeInMB) {
+			protected TranspositionTable<String, MoveGenerator<String>> buildTranspositionTable(int sizeInMB) {
 				return null;
 			}
 

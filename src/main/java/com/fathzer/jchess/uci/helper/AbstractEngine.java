@@ -64,7 +64,7 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 	 */
 	protected AbstractEngine(IterativeDeepeningEngine<M, B> engine, TimeManager<B> timeManager) {
 		this.engine = engine;
-		final TranspositionTable<M> transpositionTable = engine.getTranspositionTable();
+		final TranspositionTable<M, B> transpositionTable = engine.getTranspositionTable();
 		this.ttSizeInMB = transpositionTable==null ? -1 : transpositionTable.getMemorySizeMB();
 		this.defaultThreads = engine.getParallelism();
 		this.defaultDepth = engine.getDeepeningPolicy().getDepth();
@@ -86,14 +86,14 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 
 	@Override
 	public void setHashTableSize(int sizeInMB) {
-		final TranspositionTable<M> transpositionTable = engine.getTranspositionTable();
+		final TranspositionTable<M, B> transpositionTable = engine.getTranspositionTable();
 		final int currentSize = transpositionTable==null ? -1 : transpositionTable.getMemorySizeMB();
 		if (currentSize!=sizeInMB) {
 			engine.setTranspositionTable(sizeInMB<0 ? null : buildTranspositionTable(sizeInMB));
 		}
 	}
 
-	protected abstract TranspositionTable<M> buildTranspositionTable(int sizeInMB);
+	protected abstract TranspositionTable<M, B> buildTranspositionTable(int sizeInMB);
 	
 	@Override
 	public void newGame() {
@@ -146,21 +146,21 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 						return new GoReply(null);
 					}
 					final EvaluatedMove<M> move = getSelected(board, search);
-					final GoReply goReply = new GoReply(toUCI(move.getContent()));
+					final GoReply goReply = new GoReply(toUCI(move.getMove()));
 					final Info info = new Info(search.getDepth());
-					final TranspositionTable<M> tt = engine.getTranspositionTable();
+					final TranspositionTable<M, B> tt = engine.getTranspositionTable();
 					final int entryCount = tt.getEntryCount();
 					if (entryCount>0) {
 						info.setHashFull((int)(1000L*entryCount/tt.getSize()));
 					}
 					final List<EvaluatedMove<M>> bestMoves = search.getBestMoves();
-					final Map<String, Optional<Score>> scores = bestMoves.stream().collect(Collectors.toMap(em -> toUCI(em.getContent()).toString(), em -> toScore(em.getEvaluation())));
+					final Map<String, Optional<Score>> scores = bestMoves.stream().collect(Collectors.toMap(em -> toUCI(em.getMove()).toString(), em -> toScore(em.getEvaluation())));
 					info.setScoreBuilder(m -> scores.get(m.toString()));
 					info.setPvBuilder(m -> {
 						final List<UCIMove> list = tt.collectPV(board, toMove(m), info.getDepth()).stream().map(x -> toUCI(x)).toList();
 						return list.isEmpty() ? Optional.empty() : Optional.of(list);
 					});
-					info.setExtraMoves(bestMoves.stream().filter(em -> !move.getContent().equals(em.getContent())).limit(engine.getDeepeningPolicy().getSize()-1L).map(em->toUCI(em.getContent())).toList());
+					info.setExtraMoves(bestMoves.stream().filter(em -> !move.getMove().equals(em.getMove())).limit(engine.getDeepeningPolicy().getSize()-1L).map(em->toUCI(em.getMove())).toList());
 					goReply.setInfo(info);
 					return goReply;
 				} finally {

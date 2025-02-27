@@ -56,7 +56,7 @@ public class SpeedTest<M, B extends MoveGenerator<M>> {
 	 * It doesn't change the best move detection, but sometimes, it could change other move's evaluation (see example below).
 	 * So, in "real life", it doesn't matter because the best move will still be the good one. But if you use the engine for
 	 * analysis it could lead to wrong results.
-	 * <br><br>Example with fen 7k/5p2/5PQN/5PPK/6PP/8/8/8 w - - 6 5:
+	 * <br><br>Example with fen 1R6/8/8/7R/k7/ppp1p3/r2bP3/1K6 b - - 6 5:
 	 * <br>Here the second best move pv is check the king with the rook, opponent move is forced, then move back the rook to
 	 * its initial position, opponent is forced again, then ... play the best move which is a mat.
 	 * <br>With two repetitions test, this mat is considered as a draw.
@@ -120,7 +120,7 @@ public class SpeedTest<M, B extends MoveGenerator<M>> {
 		max = mv.moves.get(0).getEvaluation();
 		mv.assertEquals(Type.WIN, max.getType());
 		mv.assertEquals(1, max.getCountToEnd());
-		mv.assertEquals(UCIMove.from("c3c2"), uciEngine.toUCI(mv.moves.get(0).getContent()));
+		mv.assertEquals(UCIMove.from("c3c2"), uciEngine.toUCI(mv.moves.get(0).getMove()));
 		if (hasRegularThreeFoldRepetitionDetection()) {
 			// make this test only if the move generator's getContextualStatus method implements the three fold repetition detection
 			max = mv.moves.get(1).getEvaluation();
@@ -135,7 +135,7 @@ public class SpeedTest<M, B extends MoveGenerator<M>> {
 		mv.assertEquals(Type.WIN, max.getType());
 		mv.assertEquals(2, max.getCountToEnd());
 		mv.assertTrue(mv.moves.get(1).getScore()<max.getScore());
-		mv.assertEquals(UCIMove.from("b3a1"), uciEngine.toUCI(mv.moves.get(0).getContent()));
+		mv.assertEquals(UCIMove.from("b3a1"), uciEngine.toUCI(mv.moves.get(0).getMove()));
 		
 		// Check in 2 with blacks
 		mv = fill("8/4k1KP/6nn/6b1/8/8/8/8 b - - 0 1");
@@ -143,14 +143,14 @@ public class SpeedTest<M, B extends MoveGenerator<M>> {
 		mv.assertEquals(Type.WIN, max.getType());
 		mv.assertEquals(2, max.getCountToEnd());
 		mv.assertTrue(mv.moves.get(1).getScore()<max.getScore());
-		mv.assertEquals(UCIMove.from("g6h8"), uciEngine.toUCI(mv.moves.get(0).getContent()));
+		mv.assertEquals(UCIMove.from("g6h8"), uciEngine.toUCI(mv.moves.get(0).getMove()));
 		
 		// Check in 3
 		policy.setSize(3);
 		policy.setAccuracy(100);
 		mv = fill("r2k1r2/pp1b2pp/1b2Pn2/2p5/Q1B2Bq1/2P5/P5PP/3R1RK1 w - - 0 1");
 //		mv.assertEquals(19, mv.moves.size());
-		mv.assertEquals(UCIMove.from("d1d7"), uciEngine.toUCI(mv.moves.get(0).getContent()));
+		mv.assertEquals(UCIMove.from("d1d7"), uciEngine.toUCI(mv.moves.get(0).getMove()));
 		
 		// Check in 4
 		policy.setSize(1);

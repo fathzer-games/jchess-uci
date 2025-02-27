@@ -13,7 +13,7 @@ import com.fathzer.games.MoveGenerator;
 import com.fathzer.games.perft.MoveGeneratorChecker;
 import com.fathzer.games.perft.PerfTResult;
 import com.fathzer.games.perft.PerfTTestData;
-import com.fathzer.games.perft.TestableMoveGeneratorBuilder;
+import com.fathzer.games.perft.FromPositionMoveGeneratorBuilder;
 import com.fathzer.jchess.uci.Engine;
 import com.fathzer.jchess.uci.StoppableTask;
 import com.fathzer.jchess.uci.UCI;
@@ -82,7 +82,7 @@ public class ExtendedUCI extends UCI {
 		if (result.isInterrupted()) {
 			out("perft process has been interrupted");
 		} else {
-			result.getDivides().stream().forEach(d -> out (toString(d.getMove())+": "+d.getCount()));
+			result.getDivides().stream().forEach(d -> out (toString(d.getMove())+": "+d.getNbLeaves()));
 			final long sum = result.getNbLeaves();
 			out("perft "+f(sum)+" leaves in "+f(duration)+"ms ("+f(sum*1000/duration)+" leaves/s) (using "+params.getParallelism()+" thread(s))");
 			out("perft "+f(result.getNbMovesFound())+" "+(params.isLegal()?"":"peudo-")+"legal moves generated ("+f(result.getNbMovesFound()*1000/duration)+" mv/s). " + 
@@ -96,7 +96,7 @@ public class ExtendedUCI extends UCI {
 	}
 	
 	protected void doPerfStat(Deque<String> tokens) {
-		if (! (getEngine() instanceof TestableMoveGeneratorBuilder)) {
+		if (! (getEngine() instanceof FromPositionMoveGeneratorBuilder)) {
 			debug("test is not supported by this engine");
 			return;
 		}
@@ -108,11 +108,11 @@ public class ExtendedUCI extends UCI {
 				debug("You may override readTestData to read some data");
 				return;
 			}
-			doPerfStat(testData, (TestableMoveGeneratorBuilder<?,?>)getEngine(), params.get());
+			doPerfStat(testData, (FromPositionMoveGeneratorBuilder<?,?>)getEngine(), params.get());
 		}
 	}
 
-	private <M, B extends MoveGenerator<M>> void doPerfStat(Collection<PerfTTestData> testData, TestableMoveGeneratorBuilder<M, B> engine, PerfStatsParameters params) {
+	private <M, B extends MoveGenerator<M>> void doPerfStat(Collection<PerfTTestData> testData, FromPositionMoveGeneratorBuilder<M, B> engine, PerfStatsParameters params) {
 		final MoveGeneratorChecker test = new MoveGeneratorChecker(testData);
 		test.setErrorManager(e-> err(TEST_COMMAND, e));
 		test.setCountErrorManager(e -> out("Error for "+e.getStartPosition()+" expected "+e.getExpectedCount()+" got "+e.getActualCount()));
@@ -133,7 +133,7 @@ public class ExtendedUCI extends UCI {
 			} finally {
 				timer.cancel();
 			}
-		}, test::cancel, e -> err(TEST_COMMAND, e));
+		}, test::interrupt, e -> err(TEST_COMMAND, e));
 	}
 	
 	protected Collection<PerfTTestData> readTestData() {
