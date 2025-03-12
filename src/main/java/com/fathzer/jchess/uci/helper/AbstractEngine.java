@@ -147,13 +147,13 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 					}
 					final EvaluatedMove<M> move = getSelected(board, search);
 					final GoReply goReply = new GoReply(toUCI(move.getMove()));
-					final Info info = new Info(search.getDepth());
+					final Info info = new Info(search.getLastDepth());
 					final TranspositionTable<M, B> tt = engine.getTranspositionTable();
 					final int entryCount = tt.getEntryCount();
 					if (entryCount>0) {
 						info.setHashFull((int)(1000L*entryCount/tt.getSize()));
 					}
-					final List<EvaluatedMove<M>> bestMoves = search.getBestMoves();
+					final List<EvaluatedMove<M>> bestMoves = search.getAccurateMoves();
 					final Map<String, Optional<Score>> scores = bestMoves.stream().collect(Collectors.toMap(em -> toUCI(em.getMove()).toString(), em -> toScore(em.getEvaluation())));
 					info.setScoreBuilder(m -> scores.get(m.toString()));
 					info.setPvBuilder(m -> {
@@ -176,7 +176,7 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 	}
 	
 	protected EvaluatedMove<M> getSelected(B board, SearchHistory<M> history) {
-		return history.getBestMoves().get(0);
+		return history.getAccurateMoves().get(0);
 	}
 	
 	private Optional<Score> toScore(Evaluation evaluation) {

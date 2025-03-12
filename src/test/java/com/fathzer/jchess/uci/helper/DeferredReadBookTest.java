@@ -6,6 +6,9 @@ import static org.mockito.Mockito.*;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URL;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -42,8 +45,13 @@ class DeferredReadMoveLibraryTest {
 	private MoveLibrary<String, MoveGenerator<String>> readOpenings(URL url) {
 		return new MoveLibrary<String, MoveGenerator<String>>() {
 			@Override
+			public List<EvaluatedMove<String>> getMoves(MoveGenerator<String> board) {
+				return mv.equals(board) ? Arrays.asList(new EvaluatedMove<>("best", Evaluation.score(100)), new EvaluatedMove<>("ok", Evaluation.score(50))) : Collections.emptyList();
+			}
+
+			@Override
 			public Optional<EvaluatedMove<String>> apply(MoveGenerator<String> board) {
-				return mv.equals(board) ? Optional.of(new EvaluatedMove<>("ok", Evaluation.score(100))) : Optional.empty(); 
+				return mv.equals(board) ? Optional.of(new EvaluatedMove<>("best", Evaluation.score(100))) : Optional.empty(); 
 			}
 		};
 	}

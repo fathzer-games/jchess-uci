@@ -5,6 +5,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 import com.fathzer.games.MoveGenerator;
@@ -46,6 +48,16 @@ public class DeferredReadMoveLibrary<M, B extends MoveGenerator<M>> implements M
 		}
 		this.url = url;
 		this.reader = reader;
+	}
+	
+	
+
+	@Override
+	public List<EvaluatedMove<M>> getMoves(B board) {
+		if (internal==null) {
+			return Collections.emptyList();
+		}
+		return internal.getMoves(board);
 	}
 
 	/** {@inheritDoc}

@@ -69,7 +69,7 @@ public class SpeedTest<M, B extends MoveGenerator<M>> {
 	private Result<M> fill(String fen) {
 		uciEngine.newGame();
 		uciEngine.setStartPosition(fen);
-		return new Result<>(fen, uciEngine.getEngine().getBestMoves(uciEngine.get()).getBestMoves(), out);
+		return new Result<>(fen, uciEngine.getEngine().getBestMoves(uciEngine.get()).getAccurateMoves(), out);
 	}
 	
 	/** Launches the test.
