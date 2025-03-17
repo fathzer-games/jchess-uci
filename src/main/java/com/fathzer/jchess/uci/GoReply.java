@@ -95,16 +95,8 @@ public class GoReply {
 			this.extraMoves = extraMoves;
 		}
 
-		public Function<UCIMove, Optional<List<UCIMove>>> getPvBuilder() {
-			return pvBuilder;
-		}
-
 		public void setPvBuilder(Function<UCIMove, Optional<List<UCIMove>>> pvBuilder) {
 			this.pvBuilder = pvBuilder;
-		}
-
-		public Function<UCIMove, Optional<Score>> getScoreBuilder() {
-			return scoreBuilder;
 		}
 
 		public void setScoreBuilder(Function<UCIMove, Optional<Score>> scoreBuilder) {

@@ -5,6 +5,7 @@ import com.fathzer.jchess.uci.UCIMove;
 /** A class that can converts an internal move into a standard UCI move.
  * @param <M> The type of internal moves
  */
+@FunctionalInterface
 public interface MoveToUCIConverter<M> {
 	/** Converts an internal move to its UCI representation.
 	 * @param move The move to convert

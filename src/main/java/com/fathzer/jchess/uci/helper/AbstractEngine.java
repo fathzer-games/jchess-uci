@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import com.fathzer.games.HashProvider;
 import com.fathzer.games.MoveGenerator;
 import com.fathzer.games.MoveGenerator.MoveConfidence;
 import com.fathzer.games.ai.evaluation.EvaluatedMove;
@@ -156,16 +157,19 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 					final List<EvaluatedMove<M>> bestMoves = search.getAccurateMoves();
 					final Map<String, Optional<Score>> scores = bestMoves.stream().collect(Collectors.toMap(em -> toUCI(em.getMove()).toString(), em -> toScore(em.getEvaluation())));
 					info.setScoreBuilder(m -> scores.get(m.toString()));
-					info.setPvBuilder(m -> {
-						final List<UCIMove> list = tt.collectPV(board, toMove(m), info.getDepth()).stream().map(x -> toUCI(x)).toList();
-						return list.isEmpty() ? Optional.empty() : Optional.of(list);
-					});
+					final Map<UCIMove, Optional<List<UCIMove>>> pvs = bestMoves.stream().map(EvaluatedMove::getMove).collect(Collectors.toMap(m->toUCI(m), em -> getPV(tt, board, em, info.getDepth())));
+					info.setPvBuilder(pvs::get);
 					info.setExtraMoves(bestMoves.stream().filter(em -> !move.getMove().equals(em.getMove())).limit(engine.getDeepeningPolicy().getSize()-1L).map(em->toUCI(em.getMove())).toList());
 					goReply.setInfo(info);
 					return goReply;
 				} finally {
 					c.set(engine, previous);
 				}
+			}
+			
+			@SuppressWarnings("unchecked")
+			private <V extends MoveGenerator<M> & HashProvider> Optional<List<UCIMove>> getPV(TranspositionTable<M, B> tt, B board, M move, int depth) {
+				return Optional.of(tt.collectPV((V)board, move, depth).stream().map(m -> toUCI(m)).toList());
 			}
 
 			@Override

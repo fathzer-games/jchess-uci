@@ -115,7 +115,7 @@ public class ExtendedUCI extends UCI {
 	private <M, B extends MoveGenerator<M>> void doPerfStat(Collection<PerfTTestData> testData, FromPositionMoveGeneratorBuilder<M, B> engine, PerfStatsParameters params) {
 		final MoveGeneratorChecker test = new MoveGeneratorChecker(testData);
 		test.setErrorManager(e-> err(TEST_COMMAND, e));
-		test.setCountErrorManager(e -> out("Error for "+e.getStartPosition()+" expected "+e.getExpectedCount()+" got "+e.getActualCount()));
+		test.setCountErrorManager(e -> out("Error for "+e.startPosition()+" expected "+e.expectedCount()+" got "+e.actualCount()));
 		final TimerTask task = new TimerTask() {
 			@Override
 			public void run() {
