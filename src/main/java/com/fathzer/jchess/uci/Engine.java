@@ -1,5 +1,10 @@
 package com.fathzer.jchess.uci;
 
+import static java.lang.annotation.ElementType.TYPE;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 import java.util.Collections;
 import java.util.List;
 
@@ -9,15 +14,53 @@ import com.fathzer.jchess.uci.parameters.GoParameters;
 /** An engine able to respond to UCI protocol.
  */
 public interface Engine {
-	/** Gets the engine's id, the one returned when a uci command is received.
-	 * @return a non null String
+	/** Annotation to mark an engine as supporting <a href="https://en.wikipedia.org/wiki/Fischer_random_chess">Chess960</a>. 
+	 * @see #isChess960Supported() 
 	 */
-	String getId();
+	@Target( TYPE )
+	@Retention(RUNTIME)
+	public @interface Chess960Supported {}
+
+	/** Annotation to declare the engine's id.
+	 * 
+	 * @see #getId()
+	 */
+	@Target( TYPE )
+	@Retention(RUNTIME)
+	public @interface Id {
+		String value();
+	}
+
+	/** Annotation to declare the engine's author.
+	 * 
+	 * @see #getAuthor()
+	 */
+	@Target( TYPE )
+	@Retention(RUNTIME)
+	public @interface Author {
+		String value();
+	}
+
+	/** Gets the engine's id, the one returned when a uci command is received.
+	 * <br>The default implementation returns the value of the {@link Id} annotation and throws an exception if the annotation is missing.
+	 * @return a non null String
+	 * @throws IllegalStateException if the {@link Id} annotation is missing on the class.
+	 */
+	default String getId() {
+		final Id annotation = getClass().getAnnotation(Id.class);
+		if (annotation==null) {
+			throw new IllegalStateException(Id.class+ "annotation is missing on class "+getClass());
+		}
+		return annotation.value();
+	}
+
 	/** Gets the engine's author, the one returned when a uci command is received.
+	 * <br>The default implementation returns the value of the {@link Author} annotation.
 	 * @return a String. Null if author is unknown (this is the default implementation).
 	 */
 	default String getAuthor() {
-		return null;
+		final Author annotation = getClass().getAnnotation(Author.class);
+		return annotation==null ? null : annotation.value();
 	}
 
 	/** Clears all data from previous game.
@@ -26,6 +69,7 @@ public interface Engine {
 	default void newGame() {
 		// Does nothing by default, assuming the engine doesn't cache anything.
 	}
+	
 	/** Gets the default hash table size in MBytes.
 	 * <br>If this method returns a positive number, the <i>Hash</i> standard option is automatically added to the options list.
 	 * <br>In such a case, {@link #setHashTableSize(int)} may be called, so you should override it in order to not have the program hang at startup.
@@ -48,10 +92,10 @@ public interface Engine {
 
 	/** Checks whether this engine supports <a href="https://en.wikipedia.org/wiki/Fischer_random_chess">Chess960</a>.
 	 * <br>If this method returns true, the <i>UCI_Chess960</i> standard option is automatically added to the options list.
-	 * @return true if chess960 is supported, false (the default) if not.
+	 * @return true if chess960 is supported. The default implementation returns true if the {@link Chess960Supported} annotation is present.
 	 */
 	default boolean isChess960Supported() {
-		return false;
+		return getClass().getAnnotation(Chess960Supported.class) != null;
 	}
 	/** Switches the <a href="https://en.wikipedia.org/wiki/Fischer_random_chess">Chess960</a> mode.
 	 * <br>The default implementation does nothing 
@@ -99,6 +143,7 @@ public interface Engine {
 	 * @throws IllegalArgumentException if move is illegal.
 	 */
 	void move(UCIMove move);
+	
 	/** Start searching for the best move.
 	 * <br>Please note that:<ul>
  	 * <li>The returned task is considered as a 'long running method' and its supplier will be called on a different thread than methods of this class.</li>
