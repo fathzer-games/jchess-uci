@@ -33,7 +33,7 @@ class PerftTask<M> implements StoppableTask<PerfTResult<M>> {
 		final ForkJoinPool exec = new ForkJoinPool(params.getParallelism());
 		try {
 			builder.setExecutor(exec);
-			this.perft = builder.build(engine.get(), params.getDepth());
+			this.perft = builder.build(engine.get().fork(), params.getDepth());
 			return perft.get();
 		} finally {
 			exec.shutdown();

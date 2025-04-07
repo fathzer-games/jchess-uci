@@ -60,17 +60,18 @@ public class ExtendedUCI extends UCI {
 			debug(NO_POSITION_DEFINED);
 			return;
 		}
-		if (! (engine instanceof MoveGeneratorSupplier)) {
+		if (engine instanceof MoveGeneratorSupplier) {
+			final Optional<PerfTParameters> params = parse(PerfTParameters::new, PerfTParameters.PARSER, tokens);
+			if (params.isPresent()) {
+				@SuppressWarnings("unchecked")
+				final StoppableTask<PerfTResult<M>> task = new PerftTask<>(((MoveGeneratorSupplier<M>)engine)::getMoveGenerator, params.get());
+				if (!doBackground(() -> doPerft(task, params.get()), task::stop, e -> err(PERFT_COMMAND,e))) {
+					debug("Engine is already working");
+				}
+			}
+		} else {
 			debug("perft is not supported by this engine");
 			return;
-		}
-		final Optional<PerfTParameters> params = parse(PerfTParameters::new, PerfTParameters.PARSER, tokens);
-		if (params.isPresent()) {
-			@SuppressWarnings("unchecked")
-			final StoppableTask<PerfTResult<M>> task = new PerftTask<>((MoveGeneratorSupplier<M>)engine, params.get());
-			if (!doBackground(() -> doPerft(task, params.get()), task::stop, e -> err(PERFT_COMMAND,e))) {
-				debug("Engine is already working");
-			}
 		}
 	}
 

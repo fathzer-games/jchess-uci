@@ -49,8 +49,11 @@ import com.fathzer.jchess.uci.parameters.GoParameters;
  * @param <B> The type of the IterativeDeepeningEngine underlying move generator
  */
 public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements Engine, MoveGeneratorSupplier<M>, MoveToUCIConverter<M> {
+	/** The current board state */
 	protected B board;
+	/** The time manager */
 	protected TimeManager<B> timeManager;
+	/** The iterative engine */
 	protected IterativeDeepeningEngine<M, B> engine;
 	private Map<String, Supplier<Evaluator<M, B>>> evaluatorBuilders;
 	private String defaultEvaluator;
@@ -201,10 +204,13 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 		return Optional.of(score); 
 	}
 	
-	@SuppressWarnings("unchecked")
+	/** 
+	 * {@inheritDoc}
+	 * <br>The returned instance is directly the current board state (it is not forked)
+	 */
 	@Override
-	public B get() {
-		return (B) board.fork();
+	public B getMoveGenerator() {
+		return board;
 	}
 
 	/** Gets the internal engine.
