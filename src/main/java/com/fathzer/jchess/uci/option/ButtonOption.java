@@ -2,8 +2,14 @@ package com.fathzer.jchess.uci.option;
 
 import java.util.function.Consumer;
 
+/** A button UCI option. */
 public class ButtonOption extends Option<Void> {
 	
+	/** Constructor.
+	 * @param name The name of the option
+	 * @param trigger The action to perform when the option is set
+	 * @throws IllegalArgumentException if the trigger or name are null
+	 */
 	public ButtonOption(String name, Consumer<Void> trigger) {
 		super(name, trigger);
 	}

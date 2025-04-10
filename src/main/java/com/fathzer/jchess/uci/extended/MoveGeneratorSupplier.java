@@ -8,6 +8,8 @@ import com.fathzer.games.MoveGenerator;
  */
 @FunctionalInterface
 public interface MoveGeneratorSupplier<M> {
-	/** Gets the move generator. */
+	/** Gets the move generator.
+ * @return the move generator (making moves on the returned instance may have side effect of the current engine position)
+*/
 	MoveGenerator<M> getMoveGenerator();
 }

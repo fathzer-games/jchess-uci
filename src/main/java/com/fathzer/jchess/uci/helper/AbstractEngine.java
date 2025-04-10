@@ -77,6 +77,10 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 		this.evaluatorBuilders = new HashMap<>();
 	}
 	
+	/** Sets the engine's evaluators.
+	 * <br>Calling this method in your engine's constructor will add an <i>evaluation</i> combo option to your engine's default uci options list.
+	 * @param evaluators The evaluators to set
+	 */
 	protected void setEvaluators(List<EvaluatorConfiguration<M, B>> evaluators) {
 		evaluatorBuilders.clear();
 		defaultEvaluator = evaluators.isEmpty() ? null : evaluators.get(0).getName();
@@ -97,6 +101,10 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 		}
 	}
 
+	/** Builds the transposition table.
+	 * @param sizeInMB the size of the table in MB
+	 * @return the transposition table
+	 */
 	protected abstract TranspositionTable<M, B> buildTranspositionTable(int sizeInMB);
 	
 	@Override
@@ -182,6 +190,11 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 		};
 	}
 	
+	/** Gets the selected move using a search history.
+	 * @param board The board state
+	 * @param history The search history
+	 * @return the selected move (the one that will be returned by the <i>go</i> command)
+	 */
 	protected EvaluatedMove<M> getSelected(B board, SearchHistory<M> history) {
 		return history.getAccurateMoves().get(0);
 	}

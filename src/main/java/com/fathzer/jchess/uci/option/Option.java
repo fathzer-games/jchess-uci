@@ -3,11 +3,22 @@ package com.fathzer.jchess.uci.option;
 import java.util.Objects;
 import java.util.function.Consumer;
 
+/** An abstract UCI option. */
 public abstract class Option<T> {
 	static final String DEFAULT = " default ";
 	
+	/** The type of the option. */
 	enum Type {
-		CHECK, SPIN, COMBO, BUTTON, STRING
+		/** A check UCI option. */
+		CHECK,
+		/** A spin UCI option. */
+		SPIN,
+		/** A combo UCI option. */
+		COMBO,
+		/** A button UCI option. */
+		BUTTON,
+		/** A string UCI option. */
+		STRING
 	}
 	
 	private final String name;
@@ -23,16 +34,27 @@ public abstract class Option<T> {
 		this.trigger = trigger;
 	}
 
+	/** Gets the option's name
+	 * @return a String
+	 */
 	public String getName() {
 		return name;
 	}
 	
 	abstract Type getType();
 	
+	/** Gets the current value of the option.
+	 * 
+	 * @return the current value of the option.
+	 */
 	public T getValue() {
 		return value;
 	}
 
+	/** Sets the current value of the option.
+	 * 
+	 * @param value the new value of the option.
+	 */
 	public abstract void setValue(String value);
 	
 	void setCastedValue(T value) {
@@ -43,6 +65,9 @@ public abstract class Option<T> {
 		}
 	}
 	
+	/** Gets the UCI representation of the option (the one returned when the <i>uci</i> command is invoked).
+	 * @return a String.
+	 */
 	public String toUCI() {
 		return "option name " + getName() + " type "+getType().toString().toLowerCase();
 	}
