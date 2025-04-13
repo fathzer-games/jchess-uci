@@ -18,11 +18,11 @@ class OptionTest {
 	void testButton() {
 		final String name = "Clear Hash";
 		final AtomicBoolean called = new AtomicBoolean();
-		ButtonOption b = new ButtonOption(name, x->{called.set(true);});
+		ButtonOption b = new ButtonOption(name, () -> called.set(true));
 		assertFalse(called.get());
 		assertEquals("option name "+name+" type button",b.toUCI());
 		assertNull(b.getValue());
-		assertThrows(IllegalArgumentException.class, () -> new ButtonOption(null, x->{}));
+		assertThrows(IllegalArgumentException.class, () -> new ButtonOption(null, ()->{}));
 		assertThrows(IllegalArgumentException.class, () -> new ButtonOption("x", null));
 		// Test we can call setValue with null
 		b.setValue(null);

@@ -25,7 +25,7 @@ import com.fathzer.jchess.uci.GoReply.Info;
 import com.fathzer.jchess.uci.GoReply.MateScore;
 import com.fathzer.jchess.uci.GoReply.Score;
 import com.fathzer.jchess.uci.StoppableTask;
-import com.fathzer.jchess.uci.ClassicalOptions;
+import com.fathzer.jchess.uci.UsualOptions;
 import com.fathzer.jchess.uci.Engine;
 import com.fathzer.jchess.uci.UCIMove;
 import com.fathzer.jchess.uci.extended.MoveGeneratorSupplier;
@@ -100,6 +100,12 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 			engine.setTranspositionTable(sizeInMB<0 ? null : buildTranspositionTable(sizeInMB));
 		}
 	}
+	
+	@Override
+	public void clearHashTable() {
+		final TranspositionTable<M, B> transpositionTable = engine.getTranspositionTable();
+		transpositionTable.newGame();
+	}
 
 	/** Builds the transposition table.
 	 * @param sizeInMB the size of the table in MB
@@ -118,8 +124,8 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 		if (!evaluatorBuilders.isEmpty()) {
 			options.add(new ComboOption("evaluation", this::setEvaluator, defaultEvaluator, evaluatorBuilders.keySet()));
 		}
-		options.add(ClassicalOptions.threads(this.engine::setParallelism, defaultThreads));
-		options.add(ClassicalOptions.multiPV(this.engine.getDeepeningPolicy()::setSize));
+		options.add(UsualOptions.threads(this.engine::setParallelism, defaultThreads));
+		options.add(UsualOptions.multiPV(this.engine.getDeepeningPolicy()::setSize));
 		options.add(new IntegerSpinOption("depth", this.engine.getDeepeningPolicy()::setDepth, defaultDepth, 1, 128));
 		options.add(new LongSpinOption("maxtime", this.engine.getDeepeningPolicy()::setMaxTime, defaultMaxTime, 1, Long.MAX_VALUE));
 		return options;

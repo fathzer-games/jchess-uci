@@ -72,7 +72,7 @@ public interface Engine {
 	
 	/** Gets the default hash table size in MBytes.
 	 * <br>If this method returns a positive number, the <i>Hash</i> standard option is automatically added to the options list.
-	 * <br>In such a case, {@link #setHashTableSize(int)} may be called, so you should override it in order to not have the program hang at startup.
+	 * <br>In such a case, {@link #setHashTableSize(int)} and {@link #clearHashTable()} may be called, so you should override them in order to not have the program hang.
 	 * @return a positive number (the default hash table size in MBytes) if this engine supports hash table. A negative number if it does
 	 * not support hash table. 
 	 * <br>The default implementation returns -1;
@@ -87,6 +87,14 @@ public interface Engine {
 	 * @param sizeInMB The size of the hash table in MBytes 
 	 */
 	default void setHashTableSize(int sizeInMB) {
+		throw new UnsupportedOperationException();
+	}
+	
+	/** Clears the hash table.
+	 * <br>The default implementation throws an UnsupportedOperationException.
+	 * <br>You should override this method if you override {@link #getDefaultHashTableSize()}.
+	 */
+	default void clearHashTable() {
 		throw new UnsupportedOperationException();
 	}
 

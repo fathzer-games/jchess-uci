@@ -6,7 +6,7 @@ import java.util.List;
 
 import com.fathzer.jchess.uci.UCIMove;
 
-/** The arguments of the <i>go</i> UCI command.
+/** The parameters of the <i>go</i> UCI command.
  */
 public class GoParameters {
 	private static final ParamProperties<GoParameters> WTIME_PARAM = new ParamProperties<>((p,tok) -> p.time.whiteClock.remainingMs=Parser.positiveInt(tok), "wtime");
@@ -27,45 +27,70 @@ public class GoParameters {
 		}
 	}, "searchmoves");
 
+	/** A parser able to convert the list of tokens of a <i>go</i> command into a {@link GoParameters}.
+	 */
 	public static final Parser<GoParameters> PARSER = new Parser<>(Arrays.asList(WTIME_PARAM, WHITE_TIME_INC_PARAM, BTIME_PARAM, BLACK_TIME_INC_PARAM,
 			MOVES_TO_GO_PARAM, MOVE_TIME_PARAM, INFINITE_PARAM, DEPTH_PARAM, NODES_PARAM, MATE_PARAM, PONDER_PARAM, SEARCH_MOVES_PARAM));
 
+	/** The data of a player clock. */
 	public static class PlayerClockData {
 		private int remainingMs;
 		private int incrementMs;
 
+		/** Gets the number of milliseconds remaining for the player (ie. the <i>wtime</i> or <i>btime</i> parameter).
+		 * @return an integer
+		 */
 		public int getRemainingMs() {
 			return remainingMs;
 		}
 
+		/** Gets the increment per move, in milliseconds, for the player (ie. the <i>winc</i> or <i>binc</i> parameter).
+		 * @return an integer
+		 */
 		public int getIncrementMs() {
 			return incrementMs;
 		}
 	}
 	
+	/** The parameters related to time management. */
 	public static class TimeOptions {
 		private int movesToGo;
 		private int moveTimeMs;
 		private PlayerClockData whiteClock = new PlayerClockData();
 		private PlayerClockData blackClock = new PlayerClockData();
-		private boolean infinite; 
+		private boolean infinite;
 
+		/** Gets the number of moves remaining before the next time control (ie. the <i>movestogo</i> parameter).
+		 * @return an integer
+		 */
 		public int getMovesToGo() {
 			return movesToGo;
 		}
 
+		/** Gets the exact time to search in milliseconds (ie. the <i>movetime</i> parameter).
+		 * @return an integer
+		 */
 		public int getMoveTimeMs() {
 			return moveTimeMs;
 		}
 
+		/** Gets the white player clock data (ie. the <i>wtime</i> and <i>winc</i> parameters).
+		 * @return a {@link PlayerClockData}
+		 */
 		public PlayerClockData getWhiteClock() {
 			return whiteClock;
 		}
 
+		/** Gets the black player clock data (ie. the <i>btime</i> and <i>binc</i> parameters).
+		 * @return a {@link PlayerClockData}
+		 */
 		public PlayerClockData getBlackClock() {
 			return blackClock;
 		}
 
+		/** Checks whether the search should run indefinitely (ie. the <i>infinite</i> parameter).
+		 * @return a boolean
+		 */
 		public boolean isInfinite() {
 			return infinite;
 		}
@@ -78,6 +103,9 @@ public class GoParameters {
 	private int mate = 0;
 	private List<UCIMove> moveToSearch = new LinkedList<>();
 
+	/** Gets the time options.
+	 * @return a {@link TimeOptions}
+	 */
 	public TimeOptions getTimeOptions() {
 		return time;
 	}
@@ -103,10 +131,16 @@ public class GoParameters {
 		return mate;
 	}
 
+	/** Checks whether the engine should ponder (ie. the <i>ponder</i> parameter).
+	 * @return a boolean
+	 */
 	public boolean isPonder() {
 		return ponder;
 	}
 
+	/** Gets the list of moves to analyse (ie. the <i>searchmoves</i> parameter).
+	 * @return a list of moves, or an empty list if the option is not set
+	 */
 	public List<UCIMove> getMoveToSearch() {
 		return moveToSearch;
 	}

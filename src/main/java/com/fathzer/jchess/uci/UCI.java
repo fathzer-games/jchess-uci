@@ -1,6 +1,6 @@
 package com.fathzer.jchess.uci;
 
-import static com.fathzer.jchess.uci.ClassicalOptions.*;
+import static com.fathzer.jchess.uci.UsualOptions.*;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -289,7 +289,8 @@ public class UCI implements Runnable, AutoCloseable {
 			options.computeIfAbsent(OWN_BOOK_NAME, k -> ownBook(engine::setOwnBook, true));
 		}
 		if (engine.getDefaultHashTableSize()>=0) {
-			options.computeIfAbsent(HASH_NAME, k -> new IntegerSpinOption(k, engine::setHashTableSize, engine.getDefaultHashTableSize(), 1, 64*1024));
+			options.computeIfAbsent(HASH_NAME, k -> hash(engine::setHashTableSize, engine.getDefaultHashTableSize(), 1, 4096*1024));
+			options.computeIfAbsent(CLEAR_HASH_NAME, k -> clearHash(engine::clearHashTable));
 		}
 	}
 
