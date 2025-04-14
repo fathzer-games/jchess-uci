@@ -20,12 +20,31 @@ import com.fathzer.jchess.uci.UCI;
 import com.fathzer.jchess.uci.parameters.PerfStatsParameters;
 import com.fathzer.jchess.uci.parameters.PerfTParameters;
 
-public class ExtendedUCI extends UCI {
+/** An extended UCI that adds commands to the standard UCI.
+ * <br>It adds the following commands:
+ * <ul>
+ * <li><b>perft</b>: Performs a <a href="https://www.chessprogramming.org/Perft">perft</a> test on the current position (requires the {@link Engine} to implement the {@link MoveGeneratorSupplier} interface)
+ *   <br>see {@link PerfTParameters} to know which parameters are available.
+ * </li>
+ * <li><b>test</b>: Performs a performance test on positions returned by {@link ExtendedUCI#readTestData()} method.
+ *   <br>It requires the {@link Engine} to implement the {@link FromPositionMoveGeneratorBuilder} interface) and to override the {@link ExtendedUCI#readTestData()} method.
+ *   <br>see {@link PerfStatsParameters} to know which parameters are available.
+ * </li>
+ * <li><b>d</b>: Displays the current position (requires the {@link Engine} to implement the {@link Displayable} interface).
+ *   <br>The <i>fen</i> option can be used to display the position in FEN format.
+ * </li>
+ * </ul>
+ */
+ public class ExtendedUCI extends UCI {
+	//TODO Warning not sure of what this command does <b>block</b> command. It should be documented later.
 	private static final String PERFT_COMMAND = "perft";
 	private static final String TEST_COMMAND = "test";
 	
 	private static final String NO_POSITION_DEFINED = "No position defined";
 
+	/** Constructor
+	 * @param defaultEngine The default engine
+	 */
 	public ExtendedUCI(Engine defaultEngine) {
 		super(defaultEngine);
 		addCommand(this::doPerft, PERFT_COMMAND);
@@ -34,6 +53,9 @@ public class ExtendedUCI extends UCI {
 		addCommand(this::wait, "block");
 	}
 	
+	/** Performs the display command (<b>d</b>).
+	 * @param tokens The tokens of the command excluding the command name (it contains only the options).
+	 */
 	protected void doDisplay(Deque<String> tokens) {
 		if (!isPositionSet()) {
 			debug(NO_POSITION_DEFINED);
@@ -55,7 +77,10 @@ public class ExtendedUCI extends UCI {
 		}
 	}
 
-	protected <M> void doPerft(Deque<String> tokens) {
+	/** Performs the perft command (<b>perft</b>).
+	 * @param tokens The tokens of the command excluding the command name (it contains only the options).
+	 */
+	protected void doPerft(Deque<String> tokens) {
 		if (!isPositionSet()) {
 			debug(NO_POSITION_DEFINED);
 			return;
@@ -63,17 +88,20 @@ public class ExtendedUCI extends UCI {
 		if (engine instanceof MoveGeneratorSupplier) {
 			final Optional<PerfTParameters> params = parse(PerfTParameters::new, PerfTParameters.PARSER, tokens);
 			if (params.isPresent()) {
-				@SuppressWarnings("unchecked")
-				final StoppableTask<PerfTResult<M>> task = new PerftTask<>(((MoveGeneratorSupplier<M>)engine)::getMoveGenerator, params.get());
-				if (!doBackground(() -> doPerft(task, params.get()), task::stop, e -> err(PERFT_COMMAND,e))) {
-					debug("Engine is already working");
-				}
+				launchPerfT(params);
 			}
 		} else {
 			debug("perft is not supported by this engine");
-			return;
 		}
 	}
+
+	private <M> void launchPerfT(final Optional<PerfTParameters> params) {
+		@SuppressWarnings("unchecked")
+		final StoppableTask<PerfTResult<M>> task = new PerftTask<>(((MoveGeneratorSupplier<M>)engine)::getMoveGenerator, params.get());
+		if (!doBackground(() -> doPerft(task, params.get()), task::stop, e -> err(PERFT_COMMAND,e))) {
+			debug("Engine is already working");
+		}
+}
 
 	private <M> void doPerft(StoppableTask<PerfTResult<M>> task, PerfTParameters params) throws Exception {
 		final long start = System.currentTimeMillis(); 
@@ -96,6 +124,9 @@ public class ExtendedUCI extends UCI {
 		return (getEngine() instanceof MoveToUCIConverter) ? ((MoveToUCIConverter<M>)engine).toUCI(move).toString() : move.toString();
 	}
 	
+	/** Performs the performance test command (<b>test</b>).
+	 * @param tokens The tokens of the command excluding the command name (it contains only the options).
+	 */
 	protected void doPerfStat(Deque<String> tokens) {
 		if (! (getEngine() instanceof FromPositionMoveGeneratorBuilder)) {
 			debug("test is not supported by this engine");
@@ -137,6 +168,10 @@ public class ExtendedUCI extends UCI {
 		}, test::interrupt, e -> err(TEST_COMMAND, e));
 	}
 	
+	/** Returns the data set to use with the performance test command (<b>test</b>).
+	 * <br>The default implementation returns an empty list
+	 * @return The test data
+	 */
 	protected Collection<PerfTTestData> readTestData() {
 		return Collections.emptyList();
 	}
@@ -144,7 +179,6 @@ public class ExtendedUCI extends UCI {
 	private static String f(long num) {
 		return NumberFormat.getInstance().format(num);
 	}
-	
 	
 	private void wait(Deque<String> args) {
 		while (true) {

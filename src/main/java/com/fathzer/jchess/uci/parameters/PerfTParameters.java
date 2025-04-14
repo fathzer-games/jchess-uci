@@ -4,17 +4,27 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
 
+import com.fathzer.games.MoveGenerator;
+
 /** The parameters of the <i>perft</i> UCI command.
+ * <br>List of supported parameters:
+ * <ul>
+ * <li><b>depth</b>: The depth of the search</li>
+ * <li><b>threads</b> (shortcut <b>t</b>): The number of threads to use</li>
+ * <li><b>legal</b> (shortcut <b>l</b>): Resquest legal moves from the {@link MoveGenerator} instead of pseudo legal moves</li>
+ * <li><b>playleaves</b> (shortcut <b>pl</b>): Play the leave moves when used with <i>legal</i> option. With pseudo legal moves, leave moves are always played (it's the only way to know if they are legal)</li>
+ * </ul>
  */
 public class PerfTParameters {
+	/** A {@link Parser} for the <i>perft</i> command. */
 	public static final Parser<PerfTParameters> PARSER = new PerfTLikeParser<>();
 	
-	protected static class PerfTLikeParser<T extends PerfTParameters> extends Parser<T> {
+	static class PerfTLikeParser<T extends PerfTParameters> extends Parser<T> {
 		protected PerfTLikeParser() {
 			super(Collections.emptyList());
-			add(new ParamProperties<>((p,tok) -> p.setParallelism(Parser.positiveInt(tok)), "threads", "t"));
-			add(new ParamProperties<>((p,tok) -> p.setLegal(true), "legal", "l"));
-			add(new ParamProperties<>((p,tok) -> p.setPlayLeaves(true), "playleaves", "pl"));
+			add(new ParameterDefinition<>((p,tok) -> p.setParallelism(Parser.positiveInt(tok)), "threads", "t"));
+			add(new ParameterDefinition<>((p,tok) -> p.setLegal(true), "legal", "l"));
+			add(new ParameterDefinition<>((p,tok) -> p.setPlayLeaves(true), "playleaves", "pl"));
 		}
 
 		@Override
@@ -47,23 +57,28 @@ public class PerfTParameters {
 		return parallelism;
 	}
 
-	protected void setParallelism(int parallelism) {
+	void setParallelism(int parallelism) {
 		this.parallelism = parallelism;
 	}
 	
-	protected void setLegal(boolean legal) {
+	/** Gets the <i>legal</i> option.
+ 	 * @return false if the option is not set
+	 */
+	public boolean isLegal() {
+		return legal;
+	}
+
+	void setLegal(boolean legal) {
 		this.legal = legal;
 	}
 
+	/** Gets the <i>playleaves</i> option.
+	 * @return false if the option is not set
+	 */
 	public boolean isPlayLeaves() {
 		return playLeaves;
 	}
-
-	protected void setPlayLeaves(boolean playLeaves) {
+	void setPlayLeaves(boolean playLeaves) {
 		this.playLeaves = playLeaves;
-	}
-
-	public boolean isLegal() {
-		return legal;
 	}
 }

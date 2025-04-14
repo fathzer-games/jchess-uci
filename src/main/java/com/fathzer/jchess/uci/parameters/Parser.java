@@ -11,14 +11,14 @@ import java.util.function.BiConsumer;
 public class Parser<T> {
 	private final Map<String, BiConsumer<T, Deque<String>>> parserMap;
 	
-	public Parser(Collection<ParamProperties<T>> paramProperties) {
+	public Parser(Collection<ParameterDefinition<T>> paramProperties) {
 		parserMap = new HashMap<>();
-		for (ParamProperties<T> param : paramProperties) {
+		for (ParameterDefinition<T> param : paramProperties) {
 			add(param);
 		}
 	}
 	
-	public void add(ParamProperties<T> property) {
+	public void add(ParameterDefinition<T> property) {
 		for (String name : property.getNames()) {
 			if (parserMap.putIfAbsent(name, property.getParser())!=null) {
 				throw new IllegalArgumentException(name+" is already registered");
@@ -61,6 +61,12 @@ public class Parser<T> {
 		return ignoredOptions;
 	}
 	
+	/**
+	 * Parses a positive integer from a token list.
+	 * @param arguments the token list.
+	 * @return the parsed value. The first token of the list is removed.
+	 * @throws IllegalArgumentException if the token list is empty or the first token is not a positive integer.
+	 */
 	public static int positiveInt(Deque<String> arguments) {
 		if (arguments.isEmpty()) {
 			throw new IllegalArgumentException("Expected a value, but none is provided");
@@ -72,5 +78,4 @@ public class Parser<T> {
 		}
 		return result;
 	}
-
 }

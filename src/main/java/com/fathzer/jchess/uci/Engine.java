@@ -22,22 +22,25 @@ public interface Engine {
 	public @interface Chess960Supported {}
 
 	/** Annotation to declare the engine's id.
-	 * 
 	 * @see #getId()
 	 */
 	@Target( TYPE )
 	@Retention(RUNTIME)
 	public @interface Id {
+		/** Gets the engine's id.
+		 * @return a String
+		 */
 		String value();
 	}
-
 	/** Annotation to declare the engine's author.
-	 * 
 	 * @see #getAuthor()
 	 */
 	@Target( TYPE )
 	@Retention(RUNTIME)
 	public @interface Author {
+		/** Gets the engine's author.
+		 * @return a String
+		 */
 		String value();
 	}
 

@@ -80,7 +80,7 @@ public class DeferredReadMoveLibrary<M, B extends MoveGenerator<M>> implements M
 	}
 	
 	/** Initializes this move library.
-	 * @throws IOException
+	 * @throws IOException If something went wrong
 	 */
 	public void init() throws IOException {
 		if (isInitRequired()) {

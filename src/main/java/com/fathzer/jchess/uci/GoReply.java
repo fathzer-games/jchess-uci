@@ -72,33 +72,49 @@ public class GoReply {
 			this.hashFull = -1;
 		}
 
+		/** Gets the search depth.
+		 * @return The search depth.
+		 */
 		public int getDepth() {
 			return depth;
 		}
-		
+
+		/** Gets the transposition table occupancy in per mill.
+		 * @return An integer. -1 if the occupancy is unknown.
+		 */
 		public int getHashFull() {
 			return hashFull;
 		}
-
 		/** Sets the transposition table occupancy in per mill.
 		 * @param hashFull An integer. -1 if the occupancy is unknown
 		 */
 		public void setHashFull(int hashFull) {
 			this.hashFull = hashFull;
 		}
-
+		/** Gets the extra moves.
+		 * @return A list of moves. An empty list if no extra moves have been set.
+		 */
 		public List<UCIMove> getExtraMoves() {
 			return extraMoves;
 		}
 
+		/** Sets the extra moves.
+		 * <br>This method allows to return additional 'best' moves when <i>MultiPV</i> is set and is not 1
+		 * @param extraMoves A list of moves.
+		 */
 		public void setExtraMoves(List<UCIMove> extraMoves) {
 			this.extraMoves = extraMoves;
 		}
 
+		/** Sets a function to build the principal variation of best and extra moves.
+		 * @param pvBuilder A function that returns the principal variation or an empty optional if no variation is available.
+		 */
 		public void setPvBuilder(Function<UCIMove, Optional<List<UCIMove>>> pvBuilder) {
 			this.pvBuilder = pvBuilder;
 		}
-
+		/** Sets a function to build the score of best and extra moves.
+		 * @param scoreBuilder A function that returns the score or an empty optional if no score is available.
+		 */
 		public void setScoreBuilder(Function<UCIMove, Optional<Score>> scoreBuilder) {
 			this.scoreBuilder = scoreBuilder;
 		}
@@ -108,27 +124,44 @@ public class GoReply {
 	private final UCIMove ponderMove;
 	private Info info;
 	
+	/** Constructor.
+	 * @param move The best move.
+	 */
 	public GoReply(UCIMove move) {
 		this(move, null);
 	}
 	
+	/** Constructor.
+	 * @param move The best move.
+	 * @param ponderMove The ponder move (null if pondering is not activated).
+	 */
 	public GoReply(UCIMove move, UCIMove ponderMove) {
 		this.bestMove = move;
 		this.ponderMove = ponderMove;
 	}
 	
+	/** Sets the information attached to the reply.
+	 * @param info The information attached to the reply.
+	 */
 	public void setInfo(Info info) {
 		this.info = info;
 	}
-
+	/** Gets the best move.
+	 * @return An optional containing the best move or an empty optional if no move is available (typically if the engine is checked mate).
+	 */
 	public Optional<UCIMove> getMove() {
 		return Optional.ofNullable(bestMove);
 	}
-	
+	/** Gets the ponder move.
+	 * @return An optional containing the ponder move or an empty optional if no ponder move is available.
+	 */
 	public Optional<UCIMove> getPonderMove() {
 		return Optional.ofNullable(ponderMove);
 	}
 	
+	/** Gets the information attached to the reply.
+	 * @return An optional containing the information or an empty optional if no information is available.
+	 */
 	public Optional<Info> getInfo() {
 		return Optional.ofNullable(info);
 	}

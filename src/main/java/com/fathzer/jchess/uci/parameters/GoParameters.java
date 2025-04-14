@@ -9,19 +9,19 @@ import com.fathzer.jchess.uci.UCIMove;
 /** The parameters of the <i>go</i> UCI command.
  */
 public class GoParameters {
-	private static final ParamProperties<GoParameters> WTIME_PARAM = new ParamProperties<>((p,tok) -> p.time.whiteClock.remainingMs=Parser.positiveInt(tok), "wtime");
-	private static final ParamProperties<GoParameters> WHITE_TIME_INC_PARAM = new ParamProperties<>((p,tok) -> p.time.whiteClock.incrementMs=Parser.positiveInt(tok), "winc");
-	private static final ParamProperties<GoParameters> BTIME_PARAM = new ParamProperties<>((p,tok) -> p.time.blackClock.remainingMs=Parser.positiveInt(tok), "btime");
-	private static final ParamProperties<GoParameters> BLACK_TIME_INC_PARAM = new ParamProperties<>((p,tok) -> p.time.blackClock.incrementMs=Parser.positiveInt(tok), "binc");
-	private static final ParamProperties<GoParameters> MOVES_TO_GO_PARAM = new ParamProperties<>((p,tok) -> p.time.movesToGo=Parser.positiveInt(tok), "movestogo");
-	private static final ParamProperties<GoParameters> MOVE_TIME_PARAM = new ParamProperties<>((p,tok) -> p.time.moveTimeMs=Parser.positiveInt(tok), "movetime");
-	private static final ParamProperties<GoParameters> INFINITE_PARAM = new ParamProperties<>((p,tok) -> p.time.infinite=true, "infinite");
+	private static final ParameterDefinition<GoParameters> WTIME_PARAM = new ParameterDefinition<>((p,tok) -> p.time.whiteClock.remainingMs=Parser.positiveInt(tok), "wtime");
+	private static final ParameterDefinition<GoParameters> WHITE_TIME_INC_PARAM = new ParameterDefinition<>((p,tok) -> p.time.whiteClock.incrementMs=Parser.positiveInt(tok), "winc");
+	private static final ParameterDefinition<GoParameters> BTIME_PARAM = new ParameterDefinition<>((p,tok) -> p.time.blackClock.remainingMs=Parser.positiveInt(tok), "btime");
+	private static final ParameterDefinition<GoParameters> BLACK_TIME_INC_PARAM = new ParameterDefinition<>((p,tok) -> p.time.blackClock.incrementMs=Parser.positiveInt(tok), "binc");
+	private static final ParameterDefinition<GoParameters> MOVES_TO_GO_PARAM = new ParameterDefinition<>((p,tok) -> p.time.movesToGo=Parser.positiveInt(tok), "movestogo");
+	private static final ParameterDefinition<GoParameters> MOVE_TIME_PARAM = new ParameterDefinition<>((p,tok) -> p.time.moveTimeMs=Parser.positiveInt(tok), "movetime");
+	private static final ParameterDefinition<GoParameters> INFINITE_PARAM = new ParameterDefinition<>((p,tok) -> p.time.infinite=true, "infinite");
 
-	private static final ParamProperties<GoParameters> DEPTH_PARAM = new ParamProperties<>((p,tok) -> p.depth=Parser.positiveInt(tok), "depth");
-	private static final ParamProperties<GoParameters> NODES_PARAM = new ParamProperties<>((p,tok) -> p.nodes=Parser.positiveInt(tok), "nodes");
-	private static final ParamProperties<GoParameters> MATE_PARAM = new ParamProperties<>((p,tok) -> p.mate=Parser.positiveInt(tok), "mate");
-	private static final ParamProperties<GoParameters> PONDER_PARAM = new ParamProperties<>((p,tok) -> p.ponder=true, "ponder");
-	private static final ParamProperties<GoParameters> SEARCH_MOVES_PARAM = new ParamProperties<>((p,tok) -> {
+	private static final ParameterDefinition<GoParameters> DEPTH_PARAM = new ParameterDefinition<>((p,tok) -> p.depth=Parser.positiveInt(tok), "depth");
+	private static final ParameterDefinition<GoParameters> NODES_PARAM = new ParameterDefinition<>((p,tok) -> p.nodes=Parser.positiveInt(tok), "nodes");
+	private static final ParameterDefinition<GoParameters> MATE_PARAM = new ParameterDefinition<>((p,tok) -> p.mate=Parser.positiveInt(tok), "mate");
+	private static final ParameterDefinition<GoParameters> PONDER_PARAM = new ParameterDefinition<>((p,tok) -> p.ponder=true, "ponder");
+	private static final ParameterDefinition<GoParameters> SEARCH_MOVES_PARAM = new ParameterDefinition<>((p,tok) -> {
 		while (!tok.isEmpty()) {
 			p.moveToSearch.add(UCIMove.from(tok.pop()));
 		}
