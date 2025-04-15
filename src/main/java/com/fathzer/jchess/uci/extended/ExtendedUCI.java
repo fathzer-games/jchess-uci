@@ -66,7 +66,7 @@ import com.fathzer.jchess.uci.parameters.PerfTParameters;
 			if (tokens.isEmpty()) {
 				result = displayable.getBoardAsString();
 			} else if (tokens.size()==1 && "fen".equals(tokens.peek())) {
-				result = ((Displayable)getEngine()).getFEN();
+				result = ((Displayable)engine).getFEN();
 			} else {
 				debug("Unknown display options "+Arrays.asList(tokens));
 				return;
@@ -121,14 +121,14 @@ import com.fathzer.jchess.uci.parameters.PerfTParameters;
 	
 	@SuppressWarnings("unchecked")
 	private <M> String toString(M move) {
-		return (getEngine() instanceof MoveToUCIConverter) ? ((MoveToUCIConverter<M>)engine).toUCI(move).toString() : move.toString();
+		return (engine instanceof MoveToUCIConverter) ? ((MoveToUCIConverter<M>)engine).toUCI(move).toString() : move.toString();
 	}
 	
 	/** Performs the performance test command (<b>test</b>).
 	 * @param tokens The tokens of the command excluding the command name (it contains only the options).
 	 */
 	protected void doPerfStat(Deque<String> tokens) {
-		if (! (getEngine() instanceof FromPositionMoveGeneratorBuilder)) {
+		if (! (engine instanceof FromPositionMoveGeneratorBuilder)) {
 			debug("test is not supported by this engine");
 			return;
 		}
@@ -140,7 +140,7 @@ import com.fathzer.jchess.uci.parameters.PerfTParameters;
 				debug("You may override readTestData to read some data");
 				return;
 			}
-			doPerfStat(testData, (FromPositionMoveGeneratorBuilder<?,?>)getEngine(), params.get());
+			doPerfStat(testData, (FromPositionMoveGeneratorBuilder<?,?>)engine, params.get());
 		}
 	}
 

@@ -27,7 +27,6 @@ import java.util.stream.Collectors;
 
 import com.fathzer.jchess.uci.BackgroundTaskManager.Task;
 import com.fathzer.jchess.uci.GoReply.Info;
-import com.fathzer.jchess.uci.option.IntegerSpinOption;
 import com.fathzer.jchess.uci.option.Option;
 import com.fathzer.jchess.uci.parameters.GoParameters;
 import com.fathzer.jchess.uci.parameters.Parser;
@@ -37,6 +36,7 @@ import com.fathzer.jchess.uci.parameters.Parser;
  * @see Engine
  */
 public class UCI implements Runnable, AutoCloseable {
+	/** If the file whose path is in this system property exists, the commands it contains will be executed when the engine is started. */
 	public static final String INIT_COMMANDS_PROPERTY_FILE = "uciInitCommands";
 
 	private static final BufferedReader IN = new BufferedReader(new InputStreamReader(System.in));
@@ -45,10 +45,12 @@ public class UCI implements Runnable, AutoCloseable {
 	private static final String GO_CMD = "go";
 	private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.nnnnnnnn");
 	
+	/** The current engine. */
 	protected Engine engine;
+
 	private final Map<String, Consumer<Deque<String>>> executors = new HashMap<>();
 	private final Map<String, Engine> engines = new HashMap<>();
-	
+
 	private final BackgroundTaskManager backTasks = new BackgroundTaskManager();
 	private boolean debug = Boolean.getBoolean("logToFile");
 	private boolean debugUCI = Boolean.getBoolean("debugUCI");
@@ -56,6 +58,9 @@ public class UCI implements Runnable, AutoCloseable {
 	
 	private boolean isPositionSet;
 	
+	/** Creates a new instance.
+	 * @param defaultEngine The default engine to use.
+	 */
 	public UCI(Engine defaultEngine) {
 		engines.put(defaultEngine.getId(), defaultEngine);
 		this.engine = defaultEngine;
@@ -76,6 +81,11 @@ public class UCI implements Runnable, AutoCloseable {
 		}
 	}
 	
+	/** Adds a new engine.
+	 * @param engine The engine to add.
+	 * @throws IllegalArgumentException If there's already an engine with the same id.
+	 * @see #doEngine(Deque)
+	 */
 	public void add(Engine engine) {
 		if (engines.containsKey(engine.getId())) {
 			throw new IllegalArgumentException("There's already an engine with id "+engine.getId());
@@ -83,10 +93,27 @@ public class UCI implements Runnable, AutoCloseable {
 		engines.put(engine.getId(), engine);
 	}
 
-	protected void addCommand(Consumer<Deque<String>> method, String... commands) {
-		Arrays.stream(commands).forEach(c -> executors.put(c, method));
+	/** Adds a new command.
+	 * <br>If command or an alias is already registered, it will be replaced by the provided one.
+	 * @param method The method to invoke when the command is received.
+	 * @param command The command that will invoke the method.
+	 * @param aliases The aliases of the command.
+	 * @throws IllegalArgumentException If the method is null or if command or any alias is null or blank.
+	 */
+	protected void addCommand(Consumer<Deque<String>> method, String command, String... aliases) {
+		if (command==null || command.isBlank() || method==null) {
+			throw new IllegalArgumentException();
+		}
+		if (Arrays.stream(aliases).anyMatch(c -> c==null || c.isBlank())) {
+			throw new IllegalArgumentException();
+		}
+		executors.put(command, method);
+		Arrays.stream(aliases).forEach(c -> executors.put(c, method));
 	}
 	
+	/** Executes the debug command.
+	 * @param tokens The tokens of the command.
+	 */
 	protected void doDebug(Deque<String> tokens) {
 		if (tokens.size()==1) {
 			String arg = tokens.pop();
@@ -102,6 +129,9 @@ public class UCI implements Runnable, AutoCloseable {
 		}
 	}
 
+	/** Executes the uci command.
+	 * @param tokens The tokens of the command.
+	 */
 	protected void doUCI(Deque<String> tokens) {
 		out("id name "+engine.getId());
 		final String author = engine.getAuthor();
@@ -136,7 +166,10 @@ public class UCI implements Runnable, AutoCloseable {
 			return "Value "+value+" is illegal";
 		}
 	}
-	
+
+	/** Executes the setoption command.
+	 * @param tokens The tokens of the command.
+	 */
 	protected void doSetOption(Deque<String> tokens) {
 		final String error = processOption(tokens);
 		if (error!=null) {
@@ -144,15 +177,24 @@ public class UCI implements Runnable, AutoCloseable {
 		}
 	}
 	
+	/** Executes the isready command.
+	 * @param tokens The tokens of the command.
+	 */
 	protected void doIsReady(Deque<String> tokens) {
 		out("readyok");
 	}
 
+	/** Executes the newgame command.
+	 * @param tokens The tokens of the command.
+	 */
 	protected void doNewGame(Deque<String> tokens) {
-		getEngine().newGame();
+		engine.newGame();
 		isPositionSet = false;
 	}
 
+	/** Executes the position command.
+ * @param tokens The tokens of the command.
+	 */
 	protected void doPosition(Deque<String> tokens) {
 		if (tokens.isEmpty()) {
 			debug("missing position definition");
@@ -170,7 +212,7 @@ public class UCI implements Runnable, AutoCloseable {
 		}
 		log("Setting board to FEN",fen);
 		try {
-			getEngine().setStartPosition(fen);
+			engine.setStartPosition(fen);
 			tokens.stream().dropWhile(t->!MOVES.equals(t)).skip(1).forEach(this::doMove);
 			isPositionSet = true;
 		} catch (IllegalArgumentException e) {
@@ -181,7 +223,7 @@ public class UCI implements Runnable, AutoCloseable {
 	private void doMove(String move) {
 		log("Moving",move);
 		try {
-			getEngine().move(UCIMove.from(move));
+			engine.move(UCIMove.from(move));
 		} catch (IllegalArgumentException e) {
 			debug("invalid move "+move);
 		}
@@ -201,6 +243,9 @@ public class UCI implements Runnable, AutoCloseable {
 		return backTasks.doBackground(new Task(task, stopper, logger));
 	}
 
+	/** Executes the go command.
+	 * @param tokens The tokens of the command.
+	 */
 	protected void doGo(Deque<String> tokens) {
 		if (!isPositionSet()) {
 			debug("No position defined");
@@ -230,6 +275,13 @@ public class UCI implements Runnable, AutoCloseable {
 		out(goReply.toString());
 	}
 
+	/** Parses the parameter tokens of a command.
+	 * @param <T> The type of the object that represents the command parameters.
+	 * @param builder A supplier that creates a new instance of the object that represents the command parameters.
+	 * @param parser The parser that will parse the tokens.
+	 * @param tokens The tokens to parse (excluding the command name itself).
+	 * @return An optional containing the parsed object or empty if the parsing failed.
+	 */
 	protected <T> Optional<T> parse(Supplier<T> builder, Parser<T> parser, Deque<String> tokens) {
 		try {
 			final T result = builder.get();
@@ -244,12 +296,19 @@ public class UCI implements Runnable, AutoCloseable {
 		}
 	}
 
+	/** Executes the stop command.
+	 * @param tokens The tokens of the command.
+	 */
 	protected void doStop(Deque<String> tokens) {
 		if (!backTasks.stop()) {
 			debug("Nothing to stop");
 		}
 	}
 	
+	/** Executes the engine command.
+	 * <br>This command allow to list the available engines (if tokens is empty) or to change the current engine.
+	 * @param tokens The tokens of the command.
+	 */
 	protected void doEngine(Deque<String> tokens) {
 		if (tokens.isEmpty()) {
 			out(ENGINE_CMD+" "+engine.getId());
@@ -272,10 +331,6 @@ public class UCI implements Runnable, AutoCloseable {
 		} else {
 			debug(ENGINE_CMD+" "+engineId+" is unknown");
 		}
-	}
-	
-	protected Engine getEngine() {
-		return engine;
 	}
 	
 	private void buildOptionsTable() {
@@ -343,6 +398,12 @@ public class UCI implements Runnable, AutoCloseable {
 		}
 	}
 
+	/** Sends an error message on an exception.
+	 * <br>The default implementation uses the {@link #err(CharSequence)} method to write the message and the exception stack trace.
+	 * <br>One can override this method in order to change this behavior.
+	 * @param tag The tag of the command that failed
+	 * @param e The exception that occurred
+	 */
 	protected void err(String tag, Throwable e) {
 		err("Error with "+tag+" tag");
 		err(e,0);
@@ -356,6 +417,11 @@ public class UCI implements Runnable, AutoCloseable {
 		}
 	}
 	
+	/** Sends an error message.
+	 * <br>The default implementation write the message the <code>System.err</code>.
+	 * <br>One can override this method in order to send error messages to somewhere else.
+	 * @param message The message to send.
+	 */
 	protected void err(CharSequence message) {
 		System.err.println(message);
 	}
@@ -400,7 +466,7 @@ public class UCI implements Runnable, AutoCloseable {
 	}
 	
 	/** Send a reply to UCI client.
-	 * <br>One can override this method in order to send replies to somewhere other than standard console input.
+	 * <br>One can override this method in order to send replies to somewhere other than standard console output.
 	 * @param message The reply to send.
 	 */
 	@SuppressWarnings("java:S106")
@@ -411,11 +477,19 @@ public class UCI implements Runnable, AutoCloseable {
 	
 	/** Tests whether the debug mode is on.
 	 * @return true if debug mode is on.
+	 * @see #doDebug(Deque)
 	 */
 	protected boolean isDebugMode() {
 		return debugUCI;
 	}
 	
+	/** Sends a debug message.
+	 * <br>The default implementation calls {@link #log(String...)} then, if debug is on, outputs an <i>info string</i> message.
+	 * <br>One can override this method in order to send debug messages to somewhere else than standard uci output.
+	 * @param message The message to send.
+	 * @see #isDebugMode()
+	 * @see #out(CharSequence)
+	 */
 	@SuppressWarnings("java:S106")
 	protected void debug(CharSequence message) {
     	log(":","info","UCI debug is", Boolean.toString(debugUCI),message.toString());

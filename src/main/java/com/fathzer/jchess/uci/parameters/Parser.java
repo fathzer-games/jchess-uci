@@ -8,16 +8,31 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
+/**
+ * Parses the parameters of a command.
+ * <br>The parameters have a name optionally followed by one or more values.
+ * <br>The values of a parameter extends until no more tokens are available or a new parameter name is encountered.
+ * <br>For example: <code>go wtime 297999 btime 300000 winc 3000 binc 3000</code>
+ * @param <T> the type of the object that represents the command parameters.
+ */
 public class Parser<T> {
 	private final Map<String, BiConsumer<T, Deque<String>>> parserMap;
 	
+	/**
+	 * Constructor.
+	 * @param paramProperties the properties of the command parameters.
+	 */
 	public Parser(Collection<ParameterDefinition<T>> paramProperties) {
 		parserMap = new HashMap<>();
 		for (ParameterDefinition<T> param : paramProperties) {
 			add(param);
 		}
 	}
-	
+
+	/** Adds a new parameter.
+	 * @param property the property to add.
+	 * @throws IllegalArgumentException if the name is already registered.
+	 */
 	public void add(ParameterDefinition<T> property) {
 		for (String name : property.getNames()) {
 			if (parserMap.putIfAbsent(name, property.getParser())!=null) {

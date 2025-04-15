@@ -10,8 +10,8 @@ import com.fathzer.jchess.uci.parameters.GoParameters.TimeOptions;
 
 /** A class that configures the engine before executing the go command
  */
-public class UCIEngineSearchConfiguration<M, B extends MoveGenerator<M>> {
-	public static class EngineConfiguration {
+class UCIEngineSearchConfiguration<M, B extends MoveGenerator<M>> {
+	static class EngineConfiguration {
 		private long maxTime;
 		private int depth;
 		private boolean deepenOnForced;
@@ -29,7 +29,7 @@ public class UCIEngineSearchConfiguration<M, B extends MoveGenerator<M>> {
 		this.timeManager = timeManager;
 	}
 	
-	public EngineConfiguration configure(IterativeDeepeningEngine<M, B> engine, GoParameters options, B board) {
+	EngineConfiguration configure(IterativeDeepeningEngine<M, B> engine, GoParameters options, B board) {
 		final EngineConfiguration result = new EngineConfiguration(engine);
 		final TimeOptions timeOptions = options.getTimeOptions();
 		if (options.isPonder() || !options.getMoveToSearch().isEmpty() || options.getMate()>0 || options.getNodes()>0 || timeOptions.isInfinite()) {
@@ -50,13 +50,13 @@ public class UCIEngineSearchConfiguration<M, B extends MoveGenerator<M>> {
 		return result;
 	}
 
-	public void set(IterativeDeepeningEngine<M, B> engine, EngineConfiguration c) {
+	void set(IterativeDeepeningEngine<M, B> engine, EngineConfiguration c) {
 		engine.getDeepeningPolicy().setMaxTime(c.maxTime);
 		engine.getDeepeningPolicy().setDepth(c.depth);
 		engine.getDeepeningPolicy().setDeepenOnForced(c.deepenOnForced);
 	}
 	
-	public long getMaxTime(B board, long remainingMs, long incrementMs, int movesToGo) {
+	long getMaxTime(B board, long remainingMs, long incrementMs, int movesToGo) {
 		return timeManager.getMaxTime(board, new CountDownState(remainingMs, incrementMs, movesToGo));
 	}
 }

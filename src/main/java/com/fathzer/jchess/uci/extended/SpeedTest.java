@@ -45,6 +45,7 @@ public class SpeedTest<M, B extends MoveGenerator<M>> {
 
 	/** Creates the test.
 	 * @param engine The engine to test
+	 * @param out A consumer that will be called with the current position and the moves found by the engine if something goes wrong.
 	 */
 	public SpeedTest(AbstractEngine<M, B> engine, Consumer<CharSequence> out) {
 		this.uciEngine = engine;

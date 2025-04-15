@@ -153,4 +153,16 @@ class UCITest {
 		uci.post("go", 10);
 		await().atMost(500, TimeUnit.MILLISECONDS).until(() -> uci.getExceptions().getOrDefault("go", new IllegalArgumentException()).getClass()==UnsupportedOperationException.class);
 	}
+	
+    @Test
+    void testAddCommandWithInvalidInputs() {
+        // Test when no consumer is provided
+        assertThrows(IllegalArgumentException.class, () -> uci.addCommand(null, "toto"));
+
+        // Test when any command in commands is null or blank
+        assertThrows(IllegalArgumentException.class, () -> uci.addCommand(x->{}, null, "alias"));
+        assertThrows(IllegalArgumentException.class, () -> uci.addCommand(x->{}, "  ", "alias"));
+        assertThrows(IllegalArgumentException.class, () -> uci.addCommand(x->{}, "cmd1", null, "alias"));
+        assertThrows(IllegalArgumentException.class, () -> uci.addCommand(x->{}, "cmd1", " ", "alias"));
+    }
 }
