@@ -76,20 +76,14 @@ public class InstrumentedUCI extends UCI {
 		try {
 			synchronized (this) {
 				wait(timeOutMS);
-				final Throwable e = exceptions.get(command);
-				if (e!=null) {
-					if (e instanceof UnknownCommandException) {
+				if (exceptions.get(command) instanceof UnknownCommandException) {
+					exceptions.remove(command);
 						return false;
-					} else {
-						throw new UncheckedException(e);
 					}
 				}
-			}
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
 			throw new UncheckedException(e);
-		} finally {
-			exceptions.remove(command);
 		}
 		return true;
 	}
