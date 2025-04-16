@@ -34,7 +34,7 @@ class OptionTest {
 		final AtomicReference<String> ref = new AtomicReference<>();
 		final String name = "NalimovPath";
 		final String defaultValue = "c:\\\\";
-		StringOption s = new StringOption(name, x->{ref.set(x);}, defaultValue);
+		StringOption s = new StringOption(name, ref::set, defaultValue);
 		assertEquals(defaultValue, ref.get());
 		assertEquals(defaultValue, s.getValue());
 		final String value = "http://x.com";
@@ -53,7 +53,7 @@ class OptionTest {
 		final AtomicBoolean ref = new AtomicBoolean();
 		final String name = "Nullmove";
 		final boolean defaultValue = true;
-		CheckOption s = new CheckOption(name, x->{ref.set(x);}, defaultValue);
+		CheckOption s = new CheckOption(name, ref::set, defaultValue);
 		assertEquals(defaultValue, ref.get());
 		assertEquals(defaultValue, s.getValue());
 		s.setValue("false");
@@ -72,7 +72,7 @@ class OptionTest {
 		final String name = "Style";
 		final String defaultValue = "Normal";
 		final LinkedHashSet<String> values = new LinkedHashSet<>(Arrays.asList("Solid",defaultValue,"Risky"));
-		ComboOption s = new ComboOption(name, x->{ref.set(x);}, defaultValue, values);
+		ComboOption s = new ComboOption(name, ref::set, defaultValue, values);
 		assertEquals(defaultValue, ref.get());
 		assertEquals(defaultValue, s.getValue());
 		final String value = "Solid";
@@ -95,7 +95,7 @@ class OptionTest {
 		final AtomicInteger ref = new AtomicInteger();
 		final String name = "Selectivity";
 		final int defaultValue = 2;
-		IntegerSpinOption s = new IntegerSpinOption(name, x->{ref.set(x);}, defaultValue, 0, 4);
+		IntegerSpinOption s = new IntegerSpinOption(name, ref::set, defaultValue, 0, 4);
 		assertEquals(defaultValue, ref.get());
 		assertEquals(defaultValue, s.getValue());
 		final int value = 3;

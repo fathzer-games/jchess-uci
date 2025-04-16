@@ -77,7 +77,7 @@ class AbstractEngineTest {
 		GoParameters params = new GoParameters();
 		GoParameters.PARSER.parse(params, new LinkedList<>(Arrays.asList(("movetime 1000").split(" "))));
 		StoppableTask<GoReply> task = ae.go(params);
-		assertThrows(RuntimeException.class, () -> task.call());
+		assertThrows(RuntimeException.class, task::call);
 		assertEquals(1000, lastMaxTime.get());
 		assertEquals(maxTime, engine.getDeepeningPolicy().getMaxTime());
 	}

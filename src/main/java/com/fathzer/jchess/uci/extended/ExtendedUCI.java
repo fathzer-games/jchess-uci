@@ -88,17 +88,17 @@ import com.fathzer.jchess.uci.parameters.PerfTParameters;
 		if (engine instanceof MoveGeneratorSupplier) {
 			final Optional<PerfTParameters> params = parse(PerfTParameters::new, PerfTParameters.PARSER, tokens);
 			if (params.isPresent()) {
-				launchPerfT(params);
+				launchPerfT(params.get());
 			}
 		} else {
 			debug("perft is not supported by this engine");
 		}
 	}
 
-	private <M> void launchPerfT(final Optional<PerfTParameters> params) {
+	private <M> void launchPerfT(final PerfTParameters params) {
 		@SuppressWarnings("unchecked")
-		final StoppableTask<PerfTResult<M>> task = new PerftTask<>(((MoveGeneratorSupplier<M>)engine)::getMoveGenerator, params.get());
-		if (!doBackground(() -> doPerft(task, params.get()), task::stop, e -> err(PERFT_COMMAND,e))) {
+		final StoppableTask<PerfTResult<M>> task = new PerftTask<>(((MoveGeneratorSupplier<M>)engine)::getMoveGenerator, params);
+		if (!doBackground(() -> doPerft(task, params), task::stop, e -> err(PERFT_COMMAND,e))) {
 			debug("Engine is already working");
 		}
 }

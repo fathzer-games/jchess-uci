@@ -83,7 +83,7 @@ class UCITest {
 	void testPositionAndNewGame() {
 		final AtomicReference<String> fen = new AtomicReference<>();
 	
-		engine.setPositionConsumer(f -> fen.set(f));
+		engine.setPositionConsumer(fen::set);
 		assertFalse(uci.isPositionSet());
 		
 		// No position
