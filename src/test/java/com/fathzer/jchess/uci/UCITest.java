@@ -150,7 +150,11 @@ class UCITest {
 				// call immediately throws an exception, there's no way to stop it
 			}
 		});
-		uci.post("go", 10);
+		try {
+			uci.post("go", 10);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 		await().atMost(500, TimeUnit.MILLISECONDS).until(() -> uci.getExceptions().getOrDefault("go", new IllegalArgumentException()).getClass()==UnsupportedOperationException.class);
 	}
 	
