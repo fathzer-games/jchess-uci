@@ -132,7 +132,7 @@ class UCITest {
 	}
 	
 	@Test
-	void bug20241123() {
+	void bug20241123() throws Exception {
 		// Exceptions thrown by engine during the go command were not reported by the logger
 		uci.post("ucinewgame", 10);
 		assertFalse(uci.isPositionSet());
@@ -142,7 +142,8 @@ class UCITest {
 		engine.setGoFunction(s -> new StoppableTask<>() {
 			@Override
 			public GoReply call() {
-				throw new UnsupportedOperationException("I'm a buggy engine by thread "+Thread.currentThread());
+				System.err.println("Stoppable task is throwing the buggy exception on thread "+Thread.currentThread()+" at "+System.currentTimeMillis());
+				throw new UnsupportedOperationException("I'm a buggy engine");
 			}
 
 			@Override
@@ -154,11 +155,14 @@ class UCITest {
 			uci.debug = true;
 			try {
 				System.err.println("We are in thread "+Thread.currentThread());
-				uci.post("go", 10);
+				uci.post("go", 200);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
+			System.err.println("Start waiting for exception on thread "+Thread.currentThread()+" at "+System.currentTimeMillis());
+			
 			await().atMost(500, TimeUnit.MILLISECONDS).until(() -> uci.getExceptions().getOrDefault("go", new IllegalArgumentException()).getClass()==UnsupportedOperationException.class);
+			System.err.println("Test passed on thread "+Thread.currentThread()+" at "+System.currentTimeMillis());
 		} finally {
 			uci.debug = false;
 		}
