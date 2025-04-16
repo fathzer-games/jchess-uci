@@ -71,11 +71,18 @@ public class InstrumentedUCI extends UCI {
 		return known;
 	}
 	
+	public boolean debug = false;
+	
 	public boolean post(String command, long timeOutMS) {
+		if (!exceptions.isEmpty() && debug) {
+			System.err.println("Warning exception is not empty");
+		}
 		input.add(command);
 		try {
 			synchronized (this) {
+				if (debug) System.err.println("Pausing thread "+Thread.currentThread()+" for "+timeOutMS);
 				wait(timeOutMS);
+				if (debug) System.err.println("Resuming thread "+Thread.currentThread());
 				final Throwable e = exceptions.get(command);
 				if (e!=null) {
 					if (e instanceof UnknownCommandException) {

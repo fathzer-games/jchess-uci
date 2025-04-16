@@ -142,7 +142,7 @@ class UCITest {
 		engine.setGoFunction(s -> new StoppableTask<>() {
 			@Override
 			public GoReply call() {
-				throw new UnsupportedOperationException("I'm a buggy engine");
+				throw new UnsupportedOperationException("I'm a buggy engine by thread "+Thread.currentThread());
 			}
 
 			@Override
@@ -151,11 +151,17 @@ class UCITest {
 			}
 		});
 		try {
-			uci.post("go", 10);
-		} catch (Exception e) {
-			e.printStackTrace();
+			uci.debug = true;
+			try {
+				System.err.println("We are in thread "+Thread.currentThread());
+				uci.post("go", 10);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			await().atMost(500, TimeUnit.MILLISECONDS).until(() -> uci.getExceptions().getOrDefault("go", new IllegalArgumentException()).getClass()==UnsupportedOperationException.class);
+		} finally {
+			uci.debug = false;
 		}
-		await().atMost(500, TimeUnit.MILLISECONDS).until(() -> uci.getExceptions().getOrDefault("go", new IllegalArgumentException()).getClass()==UnsupportedOperationException.class);
 	}
 	
     @Test
