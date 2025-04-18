@@ -69,7 +69,7 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 	protected AbstractEngine(IterativeDeepeningEngine<M, B> engine, TimeManager<B> timeManager) {
 		this.engine = engine;
 		final TranspositionTable<M, B> transpositionTable = engine.getTranspositionTable();
-		this.ttSizeInMB = transpositionTable==null ? -1 : transpositionTable.getMemorySizeMB();
+		this.ttSizeInMB = transpositionTable==null ? 0 : transpositionTable.getMemorySizeMB();
 		this.defaultThreads = engine.getParallelism();
 		this.defaultDepth = engine.getDeepeningPolicy().getDepth();
 		this.defaultMaxTime = engine.getDeepeningPolicy().getMaxTime();
@@ -92,19 +92,24 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 		return ttSizeInMB;
 	}
 
+	/** Sets the hash table size.
+	 * @param sizeInMB The size in MB (a number &lt;=0 to disable the hash table)
+	 */
 	@Override
 	public void setHashTableSize(int sizeInMB) {
 		final TranspositionTable<M, B> transpositionTable = engine.getTranspositionTable();
-		final int currentSize = transpositionTable==null ? -1 : transpositionTable.getMemorySizeMB();
+		final int currentSize = transpositionTable==null ? 0 : transpositionTable.getMemorySizeMB();
 		if (currentSize!=sizeInMB) {
-			engine.setTranspositionTable(sizeInMB<0 ? null : buildTranspositionTable(sizeInMB));
+			engine.setTranspositionTable(sizeInMB<=0 ? null : buildTranspositionTable(sizeInMB));
 		}
 	}
 	
 	@Override
 	public void clearHashTable() {
 		final TranspositionTable<M, B> transpositionTable = engine.getTranspositionTable();
-		transpositionTable.newGame();
+		if (transpositionTable!=null) {
+			transpositionTable.newGame();
+		}
 	}
 
 	/** Builds the transposition table.
