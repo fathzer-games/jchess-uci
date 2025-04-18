@@ -185,8 +185,12 @@ public class GoReply {
 	/** Gets a uci info line to return before sending the reply.
 	 * @param index The move index (0 for the best move or the index or the extra moves passed to {@code Info#setExtraMoves(List)} +1
 	 * @return The line or an empty optional if no information is available
+	 * @throws IllegalArgumentException if the index is out of bounds
 	 */
 	public Optional<String> getInfoString(int index) {
+		if (index<0 || index>info.extraMoves.size()) {
+			throw new IllegalArgumentException();
+		}
 		final StringBuilder builder = new StringBuilder();
 		if (info.depth>0) {
 			builder.append("depth ").append(info.depth);

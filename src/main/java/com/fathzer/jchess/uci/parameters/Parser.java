@@ -20,11 +20,11 @@ public class Parser<T> {
 	
 	/**
 	 * Constructor.
-	 * @param paramProperties the properties of the command parameters.
+	 * @param paramDefinitions the properties of the command parameters.
 	 */
-	public Parser(Collection<ParameterDefinition<T>> paramProperties) {
+	public Parser(Collection<ParameterDefinition<T>> paramDefinitions) {
 		parserMap = new HashMap<>();
-		for (ParameterDefinition<T> param : paramProperties) {
+		for (ParameterDefinition<T> param : paramDefinitions) {
 			add(param);
 		}
 	}
