@@ -4,20 +4,17 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import com.fathzer.jchess.uci.Engine;
+import com.fathzer.jchess.uci.Engine.Id;
 import com.fathzer.jchess.uci.GoReply;
 import com.fathzer.jchess.uci.StoppableTask;
 import com.fathzer.jchess.uci.UCIMove;
 import com.fathzer.jchess.uci.parameters.GoParameters;
 
+@Id("InstrumentedEngine")
 public class InstrumentedEngine implements Engine {
 	private Consumer<String> positionConsumer;
 	private Consumer<UCIMove> moveConsumer;
 	private Function<GoParameters, StoppableTask<GoReply>> goFunction;
-
-	@Override
-	public String getId() {
-		return "InstrumentedEngine";
-	}
 
 	@Override
 	public void setStartPosition(String fen) {

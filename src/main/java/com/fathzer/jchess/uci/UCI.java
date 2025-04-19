@@ -1,7 +1,5 @@
 package com.fathzer.jchess.uci;
 
-import static com.fathzer.jchess.uci.UsualOptions.*;
-
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.EOFException;
@@ -64,7 +62,7 @@ public class UCI implements Runnable, AutoCloseable {
 	public UCI(Engine defaultEngine) {
 		engines.put(defaultEngine.getId(), defaultEngine);
 		this.engine = defaultEngine;
-		buildOptionsTable();
+		this.options =  engine.getOptions();
 		addCommand(this::doUCI, "uci");
 		addCommand(this::doDebug, "debug");
 		addCommand(this::doSetOption, "setoption");
@@ -92,7 +90,15 @@ public class UCI implements Runnable, AutoCloseable {
 		}
 		engines.put(engine.getId(), engine);
 	}
-
+	/**
+	 * Removes an engine.
+	 * @param id The id of the engine to remove.
+	 * @return The removed engine, or null if no engine with the given id was found.
+	 */
+	public Engine removeEngine(String id) {
+		return engines.remove(id);
+	}
+	
 	/** Adds a new command.
 	 * <br>If command or an alias is already registered, it will be replaced by the provided one.
 	 * @param method The method to invoke when the command is received.
@@ -326,26 +332,10 @@ public class UCI implements Runnable, AutoCloseable {
 				debug("position is cleared by engine change");
 			}
 			this.engine = newEngine;
-			buildOptionsTable();
+			this.options =  engine.getOptions();
 			out(ENGINE_CMD+" "+engineId+" ok");
 		} else {
 			debug(ENGINE_CMD+" "+engineId+" is unknown");
-		}
-	}
-	
-	private void buildOptionsTable() {
-		final List<Option<?>> engineOptions = engine.getOptions();
-		this.options = new HashMap<>();
-		engineOptions.forEach(o -> this.options.put(o.getName(), o));
-		if (engine.isChess960Supported()) {
-			options.computeIfAbsent(CHESS960_NAME, k -> chess960(engine::setChess960));
-		}
-		if (engine.hasOwnBook()) {
-			options.computeIfAbsent(OWN_BOOK_NAME, k -> ownBook(engine::setOwnBook, true));
-		}
-		if (engine.getDefaultHashTableSize()>=0) {
-			options.computeIfAbsent(HASH_NAME, k -> hash(engine::setHashTableSize, engine.getDefaultHashTableSize(), 1, 4096*1024));
-			options.computeIfAbsent(CLEAR_HASH_NAME, k -> clearHash(engine::clearHashTable));
 		}
 	}
 

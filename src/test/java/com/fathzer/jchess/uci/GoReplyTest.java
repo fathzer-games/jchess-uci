@@ -176,6 +176,7 @@ class GoReplyTest {
         testInfoString("info depth 5 score cp 77 hashfull 999 multipv 2 pv e7e5 e2e4", reply.getInfoString(1).orElse(null));
         testInfoString("info depth 5 score cp 77 hashfull 999 multipv 3 pv e7e5 e2e4", reply.getInfoString(2).orElse(null));
         assertThrows(IllegalArgumentException.class, () -> reply.getInfoString(3));
+        assertThrows(IllegalArgumentException.class, () -> reply.getInfoString(-1));
     }
     
     @Test

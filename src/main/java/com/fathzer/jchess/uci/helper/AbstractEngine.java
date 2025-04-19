@@ -1,6 +1,5 @@
 package com.fathzer.jchess.uci.helper;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -124,16 +123,20 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 	}
 
 	@Override
-	public List<Option<?>> getOptions() {
-		final List<Option<?>> options = new ArrayList<>();
+	public Map<String, Option<?>> getOptions() {
+		final Map<String, Option<?>> options = Engine.super.getOptions();
 		if (!evaluatorBuilders.isEmpty()) {
-			options.add(new ComboOption("evaluation", this::setEvaluator, defaultEvaluator, evaluatorBuilders.keySet()));
+			add(options, new ComboOption("evaluation", this::setEvaluator, defaultEvaluator, evaluatorBuilders.keySet()));
 		}
-		options.add(UsualOptions.threads(this.engine::setParallelism, defaultThreads));
-		options.add(UsualOptions.multiPV(this.engine.getDeepeningPolicy()::setSize));
-		options.add(new IntegerSpinOption("depth", this.engine.getDeepeningPolicy()::setDepth, defaultDepth, 1, 128));
-		options.add(new LongSpinOption("maxtime", this.engine.getDeepeningPolicy()::setMaxTime, defaultMaxTime, 1, Long.MAX_VALUE));
+		add(options, UsualOptions.threads(this.engine::setParallelism, defaultThreads));
+		add(options, UsualOptions.multiPV(this.engine.getDeepeningPolicy()::setSize));
+		add(options, new IntegerSpinOption("depth", this.engine.getDeepeningPolicy()::setDepth, defaultDepth, 1, 128));
+		add(options, new LongSpinOption("maxtime", this.engine.getDeepeningPolicy()::setMaxTime, defaultMaxTime, 1, Long.MAX_VALUE));
 		return options;
+	}
+	
+	private void add(Map<String, Option<?>> map, Option<?> option) {
+		map.put(option.getName(), option);
 	}
 	
 	private void setEvaluator(String evaluatorName) {

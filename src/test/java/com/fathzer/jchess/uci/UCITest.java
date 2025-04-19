@@ -5,6 +5,7 @@ import static org.awaitility.Awaitility.*;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.LinkedList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -165,4 +166,22 @@ class UCITest {
         assertThrows(IllegalArgumentException.class, () -> uci.addCommand(x->{}, "cmd1", null, "alias"));
         assertThrows(IllegalArgumentException.class, () -> uci.addCommand(x->{}, "cmd1", " ", "alias"));
     }
+    
+    @Test
+	void testAddRemoveSetEngine() {
+		// Test when engine is not found
+		assertNull(uci.removeEngine("toto"));
+		// Test when engine with same id is already added
+		Engine sameIdEngine = new InstrumentedEngine(){};
+		assertThrows(IllegalArgumentException.class, () -> uci.add(sameIdEngine));
+		// Test when engine is found
+		Engine otherEngine = new @Engine.Id("titi") InstrumentedEngine(){};
+		uci.add(otherEngine);
+		try {
+			uci.doEngine(new LinkedList<>());
+			assertEquals(Arrays.asList("engine InstrumentedEngine","engine titi"), uci.out());
+		} finally {
+			assertEquals(otherEngine, uci.removeEngine("titi"));
+		}
+	}
 }
