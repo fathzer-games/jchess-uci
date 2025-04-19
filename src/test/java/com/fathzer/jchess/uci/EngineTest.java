@@ -2,10 +2,13 @@ package com.fathzer.jchess.uci;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.Map;
+
 import org.junit.jupiter.api.Test;
 
 import static com.fathzer.jchess.uci.Engine.*;
 
+import com.fathzer.jchess.uci.option.Option;
 import com.fathzer.jchess.uci.parameters.GoParameters;
 import com.fathzer.jchess.uci.util.InstrumentedEngine;
 
@@ -77,7 +80,7 @@ class EngineTest {
 		
 		assertTrue(engine.getOptions().isEmpty());
 		
-		final Engine fullEngine = new @Chess960Supported FakeEngine() {
+		final Engine incompleteEngine = new @Chess960Supported FakeEngine() {
 			@Override
 			public int getDefaultHashTableSize() {
 				return 16;
@@ -88,13 +91,53 @@ class EngineTest {
 				return true;
 			}
 		};
-		assertThrows(IllegalStateException.class, () -> fullEngine.setChess960(false));
-		assertThrows(IllegalStateException.class, () -> fullEngine.setChess960(true));
-		assertThrows(IllegalStateException.class, () -> fullEngine.setOwnBook(false));
-		assertThrows(IllegalStateException.class, () -> fullEngine.setOwnBook(true));
-		assertThrows(IllegalStateException.class, () -> fullEngine.setHashTableSize(64));
-		assertThrows(IllegalStateException.class, fullEngine::clearHashTable);
 		
-		//TODO Check getOptions
+		assertThrows(IllegalStateException.class, () -> incompleteEngine.setChess960(false));
+		assertThrows(IllegalStateException.class, () -> incompleteEngine.setChess960(true));
+		assertThrows(IllegalStateException.class, () -> incompleteEngine.setOwnBook(false));
+		assertThrows(IllegalStateException.class, () -> incompleteEngine.setOwnBook(true));
+		assertThrows(IllegalStateException.class, () -> incompleteEngine.setHashTableSize(64));
+		assertThrows(IllegalStateException.class, incompleteEngine::clearHashTable);
+		
+		final Engine fullEngine = new @Chess960Supported FakeEngine() {
+			@Override
+			public int getDefaultHashTableSize() {
+				return 16;
+			}
+
+			@Override
+			public boolean hasOwnBook() {
+				return true;
+			}
+
+			@Override
+			public void setHashTableSize(int sizeInMB) {
+				// Does nothing
+			}
+
+			@Override
+			public void clearHashTable() {
+				// Does nothing
+			}
+
+			@Override
+			public void setChess960(boolean chess960Mode) {
+				// Does nothing
+			}
+
+			@Override
+			public void setOwnBook(boolean activate) {
+				// Does nothing
+			}
+		};
+		Map<String, Option<?>> options = fullEngine.getOptions();
+		assertNotNull(options);
+		assertEquals(4, options.size());
+		assertNotNull(options.get(UsualOptions.CHESS960_NAME));
+		final Option<?> hash = options.get(UsualOptions.HASH_NAME);
+		assertNotNull(hash);
+		assertEquals(fullEngine.getDefaultHashTableSize(), hash.getValue());
+		assertNotNull(options.get(UsualOptions.CLEAR_HASH_NAME));
+		assertNotNull(options.get(UsualOptions.OWN_BOOK_NAME));
 	}
 }

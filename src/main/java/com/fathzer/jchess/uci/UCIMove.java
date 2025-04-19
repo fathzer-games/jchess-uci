@@ -39,10 +39,13 @@ public class UCIMove {
 	 * @throws IllegalArgumentException if the move is not a valid UCI move
 	 */
 	public static UCIMove from(String uci) {
+		if (uci==null || uci.length() > 5) {
+			throw new IllegalArgumentException();
+		}
 		try {
 			final String from = uci.substring(0, 2);
 			final String to = uci.substring(2, 4);
-			return new UCIMove(from, to, uci.length()>4 ? uci.substring(4, 5) : null);
+			return new UCIMove(from, to, uci.length() > 4 ? uci.substring(4, 5) : null);
 		} catch (IndexOutOfBoundsException e) {
 			throw new IllegalArgumentException(e);
 		}

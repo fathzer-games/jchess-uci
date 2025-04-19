@@ -5,6 +5,7 @@ import static org.awaitility.Awaitility.*;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.fathzer.jchess.uci.util.InstrumentedUCI;
+import com.fathzer.jchess.uci.Engine.Author;
 import com.fathzer.jchess.uci.util.InstrumentedEngine;
 
 class UCITest {
@@ -22,11 +24,21 @@ class UCITest {
 	
 	@BeforeAll
 	static void init() {
-		engine = new InstrumentedEngine();
-		uci = new InstrumentedUCI(engine);
+		engine = new @Engine.Chess960Supported InstrumentedEngine() {
+			@Override
+			public void setChess960(boolean chess960Mode) {
+				//Does nothing
+			}
+		};
+		uci = startUCI(engine);
+	}
+
+	protected static InstrumentedUCI startUCI(Engine engine) {
+		final InstrumentedUCI uci = new InstrumentedUCI(engine);
 		final Thread uciThread = new Thread(uci);
 		uciThread.setDaemon(true);
 		uciThread.start();
+		return uci;
 	}
 	
 	@BeforeEach
@@ -184,4 +196,33 @@ class UCITest {
 			assertEquals(otherEngine, uci.removeEngine("titi"));
 		}
 	}
+    
+    @Test
+    void testUCI() {
+    	uci.post("uci", 10);
+    	assertEquals(Arrays.asList("id name "+engine.getId(), "option name UCI_Chess960 type check default false", "uciok"), uci.out());
+    	uci.clear();
+    	
+    	uci.post("isready", 10);
+    	assertEquals(Arrays.asList("readyok"), uci.out());
+    	
+    	// Try with author and no options
+    	InstrumentedUCI myUCI = startUCI(new @Author("me") InstrumentedEngine() {});
+    	myUCI.post("uci", 10);
+    	assertEquals(Arrays.asList("id name "+engine.getId(), "id author me", "uciok"), myUCI.out());
+    }
+    
+    @Test
+    void testSetOption() {
+    	uci.post("setoption", 10);
+    	assertFalse(uci.out().isEmpty());
+    	
+    	uci.clear();
+    	uci.post("setoption name "+UsualOptions.CHESS960_NAME, 10);
+    	assertFalse(uci.out().isEmpty());
+    	
+    	uci.clear();
+    	uci.post("setoption name "+UsualOptions.CHESS960_NAME+" value true", 10);
+    	assertEquals(Collections.emptyList(), uci.out());
+    }
 }
