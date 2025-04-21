@@ -10,18 +10,8 @@ import static com.fathzer.jchess.uci.Engine.*;
 
 import com.fathzer.jchess.uci.option.Option;
 import com.fathzer.jchess.uci.parameters.GoParameters;
-import com.fathzer.jchess.uci.util.InstrumentedEngine;
 
 class EngineTest {
-	@Id("Tagged")
-	@Author("Tagger")
-	@Chess960Supported
-	private static class TaggedSubclass extends InstrumentedEngine {
-	}
-	
-	private static class ADirectSubclass extends TaggedSubclass {
-	}
-	
 	private static class FakeEngine implements Engine {
 		@Override
 		public void setStartPosition(String fen) {
@@ -38,14 +28,27 @@ class EngineTest {
 			return null;
 		}
 	}
+	
+	@Id("minimal")
+	private static class MinimalEngine extends FakeEngine {}
+
+	@Id("Tagged")
+	@Author("Tagger")
+	@Chess960Supported
+	private static class TaggedSubclass extends FakeEngine {
+	}
+	
+	private static class ADirectSubclass extends TaggedSubclass {
+	}
+	
 
 	@Test
 	void testAnnotations() {
-		final Engine instrumentedEngine = new InstrumentedEngine();
-		assertEquals("InstrumentedEngine", instrumentedEngine.getId());
-		assertFalse(instrumentedEngine.isChess960Supported());
-		assertNull(instrumentedEngine.getAuthor());
-		assertEquals(-1, instrumentedEngine.getDefaultHashTableSize());
+		final Engine minimal = new MinimalEngine();
+		assertEquals("minimal", minimal.getId());
+		assertFalse(minimal.isChess960Supported());
+		assertNull(minimal.getAuthor());
+		assertEquals(-1, minimal.getDefaultHashTableSize());
 		
 		final Engine tagged = new TaggedSubclass();
 		assertEquals("Tagged", tagged.getId());
@@ -57,7 +60,7 @@ class EngineTest {
 		assertEquals("Tagger", aDirectSubclass.getAuthor());
 		assertTrue(aDirectSubclass.isChess960Supported());
 		
-		final Engine innerClass = new @Engine.Id("toto") @Author("me") @Chess960Supported InstrumentedEngine(){};
+		final Engine innerClass = new @Engine.Id("toto") @Author("me") @Chess960Supported FakeEngine(){};
 		assertEquals("toto", innerClass.getId());
 		assertTrue(innerClass.isChess960Supported());
 		assertEquals("me", innerClass.getAuthor());

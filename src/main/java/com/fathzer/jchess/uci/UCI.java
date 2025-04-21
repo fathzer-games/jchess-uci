@@ -62,7 +62,6 @@ public class UCI implements Runnable, AutoCloseable {
 	public UCI(Engine defaultEngine) {
 		engines.put(defaultEngine.getId(), defaultEngine);
 		this.engine = defaultEngine;
-		this.options =  engine.getOptions();
 		addCommand(this::doUCI, "uci");
 		addCommand(this::doDebug, "debug");
 		addCommand(this::doSetOption, "setoption");
@@ -85,17 +84,26 @@ public class UCI implements Runnable, AutoCloseable {
 	 * @see #doEngine(Deque)
 	 */
 	public void add(Engine engine) {
-		if (engines.containsKey(engine.getId())) {
-			throw new IllegalArgumentException("There's already an engine with id "+engine.getId());
+		final String id = engine.getId();
+		if (id==null || id.isBlank()) {
+			throw new IllegalArgumentException("Engine can't have a null or blank id");
 		}
-		engines.put(engine.getId(), engine);
+		if (engines.containsKey(id)) {
+			throw new IllegalArgumentException("There's already an engine with id "+id);
+		}
+		engines.put(id, engine);
 	}
+	
 	/**
 	 * Removes an engine.
 	 * @param id The id of the engine to remove.
 	 * @return The removed engine, or null if no engine with the given id was found.
+	 * @throws IllegalStateException If id is the current engine's id.
 	 */
 	public Engine removeEngine(String id) {
+		if (id.equals(engine.getId())) {
+			throw new IllegalStateException("Can't remove current engine");
+		} 
 		return engines.remove(id);
 	}
 	
@@ -144,7 +152,7 @@ public class UCI implements Runnable, AutoCloseable {
 		if (author!=null) {
 			out("id author "+author);
 		}
-		options.values().forEach( o -> out(o.toUCI()));
+		getOptions().values().forEach( o -> out(o.toUCI()));
 		out("uciok");
 	}
 	
@@ -161,7 +169,7 @@ public class UCI implements Runnable, AutoCloseable {
 		if (name.isEmpty()) {
 			return "Option name is empty";
 		}
-		final Option<?> option = options.get(name);
+		final Option<?> option = getOptions().get(name);
 		if (option==null) {
 			return "Unknown option";
 		}
@@ -332,11 +340,18 @@ public class UCI implements Runnable, AutoCloseable {
 				debug("position is cleared by engine change");
 			}
 			this.engine = newEngine;
-			this.options =  engine.getOptions();
+			this.options =  null;
 			out(ENGINE_CMD+" "+engineId+" ok");
 		} else {
 			debug(ENGINE_CMD+" "+engineId+" is unknown");
 		}
+	}
+
+	private Map<String, Option<?>> getOptions() {
+		if (options==null) {
+			this.options = engine.getOptions();
+		}
+		return options;
 	}
 
 	@Override

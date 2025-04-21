@@ -169,7 +169,7 @@ public interface Engine {
 			options.put(OWN_BOOK_NAME, ownBook(this::setOwnBook, true));
 		}
 		if (getDefaultHashTableSize()>=0) {
-			options.put(HASH_NAME, hash(this::setHashTableSize, this.getDefaultHashTableSize(), 1, 4096*1024));
+			options.put(HASH_NAME, hash(this::setHashTableSize, this.getDefaultHashTableSize(), Math.min(getDefaultHashTableSize(), 1), 4096*1024));
 			options.put(CLEAR_HASH_NAME, clearHash(this::clearHashTable));
 		}
 		return options;
