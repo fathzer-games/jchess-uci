@@ -55,6 +55,7 @@ public class UCI implements Runnable, AutoCloseable {
 	private Map<String, Option<?>> options;
 	
 	private boolean isPositionSet;
+	private boolean isRunning;
 	
 	/** Creates a new instance.
 	 * @param defaultEngine The default engine to use.
@@ -71,6 +72,7 @@ public class UCI implements Runnable, AutoCloseable {
 		addCommand(this::doGo, GO_CMD);
 		addCommand(this::doStop, "stop");
 		addCommand(this::doEngine,ENGINE_CMD);
+		addCommand(this::doQuit, "quit", "q");
 		if (System.console()!=null) {
 			log(false, "Input from System.console()");
 		} else {
@@ -353,17 +355,21 @@ public class UCI implements Runnable, AutoCloseable {
 		}
 		return options;
 	}
+	
+	/** Executes the quit command.
+	 * @param tokens The tokens of the command.
+	 */
+	protected void doQuit(Deque<String> tokens) {
+		isRunning = false;
+	}
 
 	@Override
 	public void run() {
 		init();
-		while (true) {
+		isRunning = true;
+		while (isRunning) {
 			log("Waiting for command...");
 			final String command=getNextCommand().trim();
-			if ("quit".equals(command) || "q".equals(command)) {
-		    	log(">",command);
-				break;
-			}
 			if (!command.isEmpty()) {
 				doCommand(command);
 			}

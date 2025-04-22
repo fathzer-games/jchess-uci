@@ -57,7 +57,7 @@ public class GoReply {
 	public static class Info {
 		private final int depth;
 		private List<UCIMove> extraMoves;
-		private Function<UCIMove, Optional<List<UCIMove>>> pvBuilder;
+		private Function<UCIMove, List<UCIMove>> pvBuilder;
 		private Function<UCIMove, Optional<Score>> scoreBuilder;
 		private int hashFull;
 		
@@ -67,11 +67,10 @@ public class GoReply {
 		public Info(int depth) {
 			this.depth = depth;
 			this.extraMoves = Collections.emptyList();
-			this.pvBuilder = m -> Optional.empty();
+			this.pvBuilder = Collections::singletonList;
 			this.scoreBuilder = m -> Optional.empty();
 			this.hashFull = -1;
 		}
-
 		/** Gets the search depth.
 		 * @return The search depth.
 		 */
@@ -107,9 +106,9 @@ public class GoReply {
 		}
 
 		/** Sets a function to build the principal variation of best and extra moves.
-		 * @param pvBuilder A function that returns the principal variation or an empty optional if no variation is available.
+		 * @param pvBuilder A function that returns the principal variation (an empty list if variation is unavailable).
 		 */
-		public void setPvBuilder(Function<UCIMove, Optional<List<UCIMove>>> pvBuilder) {
+		public void setPvBuilder(Function<UCIMove, List<UCIMove>> pvBuilder) {
 			this.pvBuilder = pvBuilder;
 		}
 		/** Sets a function to build the score of best and extra moves.
@@ -179,7 +178,7 @@ public class GoReply {
 	 * @return The line or an empty optional if no information is available
 	 */
 	public Optional<String> getMainInfoString() {
-		return bestMove==null ? Optional.empty() : getInfoString(0);
+		return bestMove==null || info==null ? Optional.empty() : getInfoString(0);
 	}
 
 	/** Gets a uci info line to return before sending the reply.
@@ -188,7 +187,7 @@ public class GoReply {
 	 * @throws IllegalArgumentException if the index is out of bounds
 	 */
 	public Optional<String> getInfoString(int index) {
-		if (index<0 || index>info.extraMoves.size()) {
+		if (index<0 || info==null || index>info.extraMoves.size()) {
 			throw new IllegalArgumentException();
 		}
 		final StringBuilder builder = new StringBuilder();
@@ -209,14 +208,15 @@ public class GoReply {
 			}
 			builder.append("hashfull ").append(info.hashFull);
 		}
-		final Optional<List<UCIMove>> pv = info.pvBuilder.apply(move);
-		if (pv.isPresent()) {
-			if (!builder.isEmpty()) {
-				builder.append(' ');
-			}
-			final String moves = String.join(" ", pv.get().stream().map(UCIMove::toString).toList());
-			builder.append("multipv ").append(index+1).append(" pv ").append(moves);
+		List<UCIMove> pv = info.pvBuilder.apply(move);
+		if (pv.isEmpty()) {
+			pv = Collections.singletonList(move);
 		}
+		if (!builder.isEmpty()) {
+			builder.append(' ');
+		}
+		final String moves = String.join(" ", pv.stream().map(UCIMove::toString).toList());
+		builder.append("multipv ").append(index+1).append(" pv ").append(moves);
 		return builder.isEmpty() ? Optional.empty() : Optional.of("info "+builder);
 	}
 }

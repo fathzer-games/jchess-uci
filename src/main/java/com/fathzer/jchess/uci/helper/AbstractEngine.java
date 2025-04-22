@@ -182,7 +182,7 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 					final List<EvaluatedMove<M>> bestMoves = search.getAccurateMoves();
 					final Map<String, Optional<Score>> scores = bestMoves.stream().collect(Collectors.toMap(em -> toUCI(em.getMove()).toString(), em -> toScore(em.getEvaluation())));
 					info.setScoreBuilder(m -> scores.get(m.toString()));
-					final Map<UCIMove, Optional<List<UCIMove>>> pvs = bestMoves.stream().map(EvaluatedMove::getMove).collect(Collectors.toMap(m->toUCI(m), em -> getPV(tt, board, em, info.getDepth())));
+					final Map<UCIMove, List<UCIMove>> pvs = bestMoves.stream().map(EvaluatedMove::getMove).collect(Collectors.toMap(m->toUCI(m), em -> getPV(tt, board, em, info.getDepth())));
 					info.setPvBuilder(pvs::get);
 					info.setExtraMoves(bestMoves.stream().filter(em -> !move.getMove().equals(em.getMove())).limit(engine.getDeepeningPolicy().getSize()-1L).map(em->toUCI(em.getMove())).toList());
 					goReply.setInfo(info);
@@ -193,8 +193,8 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 			}
 			
 			@SuppressWarnings("unchecked")
-			private <V extends MoveGenerator<M> & HashProvider> Optional<List<UCIMove>> getPV(TranspositionTable<M, B> tt, B board, M move, int depth) {
-				return Optional.of(tt.collectPV((V)board, move, depth).stream().map(m -> toUCI(m)).toList());
+			private <V extends MoveGenerator<M> & HashProvider> List<UCIMove> getPV(TranspositionTable<M, B> tt, B board, M move, int depth) {
+				return tt.collectPV((V)board, move, depth).stream().map(m -> toUCI(m)).toList();
 			}
 
 			@Override

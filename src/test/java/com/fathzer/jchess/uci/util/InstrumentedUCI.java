@@ -7,13 +7,18 @@ import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
 import com.fathzer.games.util.UncheckedException;
 
 import com.fathzer.jchess.uci.Engine;
+import com.fathzer.jchess.uci.ThrowingRunnable;
 import com.fathzer.jchess.uci.UCI;
 
 public class InstrumentedUCI extends UCI {
+	private static final int TIME_OU_MS = 1000;
+
 	public static class UnknownCommandException extends RuntimeException {
 		private static final long serialVersionUID = 1L;
 
@@ -25,6 +30,7 @@ public class InstrumentedUCI extends UCI {
 	private final BlockingQueue<String> input;
 	private final List<String> output;
 	private final Map<String, Throwable> exceptions;
+	private final AtomicBoolean backgroundRunning = new AtomicBoolean();
 	
 	public InstrumentedUCI(Engine defaultEngine) {
 		super(defaultEngine);
@@ -71,11 +77,11 @@ public class InstrumentedUCI extends UCI {
 		return known;
 	}
 	
-	public boolean post(String command, long timeOutMS) {
+	public boolean post(String command) {
 		input.add(command);
 		try {
 			synchronized (this) {
-				wait(timeOutMS);
+				wait(TIME_OU_MS);
 				if (exceptions.get(command) instanceof UnknownCommandException) {
 					exceptions.remove(command);
 						return false;
@@ -89,6 +95,7 @@ public class InstrumentedUCI extends UCI {
 	}
 	
 	public void clear() {
+		backgroundRunning.set(false);
 		output.clear();
 		exceptions.clear();
 	}
@@ -99,5 +106,22 @@ public class InstrumentedUCI extends UCI {
 	
 	public Map<String, Throwable> getExceptions() {
 		return exceptions;
+	}
+
+	@Override
+	protected boolean doBackground(ThrowingRunnable task, Runnable stopper, Consumer<Exception> logger) {
+		backgroundRunning.set(true);
+		ThrowingRunnable internalTask = () -> {
+			try {
+				task.run();
+			} finally {
+				backgroundRunning.set(false);
+			}
+		};
+		return super.doBackground(internalTask, stopper, logger);
+	}
+	
+	public boolean isBackgroundRunning() {
+		return backgroundRunning.get();
 	}
 }

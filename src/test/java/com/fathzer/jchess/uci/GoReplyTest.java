@@ -84,6 +84,12 @@ class GoReplyTest {
 			return depth == other.depth && hashfull == other.hashfull && multipv == other.multipv
 					&& Objects.equals(pv, other.pv) && Objects.equals(score, other.score);
 		}
+
+		@Override
+		public String toString() {
+			return "depth=" + depth + ", score=" + score + ", hashfull=" + hashfull + ", multipv="
+					+ multipv + ", pv=" + pv;
+		}
     }
     
     void testInfoString(String expected, String current) {
@@ -91,14 +97,14 @@ class GoReplyTest {
     	assertEquals(ParsedInfoReply.from(expected), ParsedInfoReply.from(current));
     }
 
-    private static UCIMove move1;
-    private static UCIMove move2;
+    private static UCIMove e2e4;
+    private static UCIMove e7e5;
     private static UCIMove movePromotion;
 
     @BeforeAll
     static void setUp() {
-        move1 = new UCIMove("e2", "e4");
-        move2 = new UCIMove("e7", "e5");
+        e2e4 = new UCIMove("e2", "e4");
+        e7e5 = new UCIMove("e7", "e5");
         movePromotion = new UCIMove("e7", "e8", "q");
     }
 
@@ -132,9 +138,9 @@ class GoReplyTest {
 
     @Test
     void testGoReplyConstructorsAndGetters() {
-        GoReply reply = new GoReply(move1, move2);
-        assertEquals(Optional.of(move1), reply.getMove());
-        assertEquals(Optional.of(move2), reply.getPonderMove());
+        GoReply reply = new GoReply(e2e4, e7e5);
+        assertEquals(Optional.of(e2e4), reply.getMove());
+        assertEquals(Optional.of(e7e5), reply.getPonderMove());
         assertTrue(reply.getInfo().isEmpty());
 
         GoReply reply2 = new GoReply((UCIMove) null);
@@ -145,7 +151,7 @@ class GoReplyTest {
 
     @Test
     void testSetInfoAndGetInfo() {
-        GoReply reply = new GoReply(move1);
+        GoReply reply = new GoReply(e2e4);
         GoReply.Info info = new GoReply.Info(12);
         reply.setInfo(info);
         assertTrue(reply.getInfo().isPresent());
@@ -154,6 +160,9 @@ class GoReplyTest {
 
     @Test
     void testInfoFieldsAndMethods() {
+        GoReply reply = new GoReply(movePromotion);
+        assertThrows(IllegalArgumentException.class, () -> reply.getInfoString(1));
+
         GoReply.Info info = new GoReply.Info(5);
         assertEquals(5, info.getDepth());
         assertEquals(-1, info.getHashFull());
@@ -162,29 +171,35 @@ class GoReplyTest {
         info.setHashFull(999);
         assertEquals(999, info.getHashFull());
 
-        List<UCIMove> extra = List.of(move1, move2);
+        List<UCIMove> extra = List.of(e2e4, e7e5);
         info.setExtraMoves(extra);
         assertEquals(extra, info.getExtraMoves());
+        reply.setInfo(info);
+
+        // Test without pv or score builder
+        testInfoString("info depth 5 hashfull 999 multipv 2 pv e2e4", reply.getInfoString(1).orElse(null));
+        
 
         // pvBuilder and scoreBuilder
-        info.setPvBuilder(m -> Optional.of(List.of(move2, move1)));
+        info.setPvBuilder(m -> {
+        	return Arrays.asList(m, e7e5, e2e4);
+        });
 
         info.setScoreBuilder(m -> Optional.of(new GoReply.CpScore(77)));
         
-        GoReply reply = new GoReply(movePromotion);
-        reply.setInfo(info);
-        testInfoString("info depth 5 score cp 77 hashfull 999 multipv 2 pv e7e5 e2e4", reply.getInfoString(1).orElse(null));
-        testInfoString("info depth 5 score cp 77 hashfull 999 multipv 3 pv e7e5 e2e4", reply.getInfoString(2).orElse(null));
+        testInfoString("info depth 5 score cp 77 hashfull 999 multipv 2 pv e2e4 e7e5 e2e4", reply.getInfoString(1).orElse(null));
+        testInfoString("info depth 5 score cp 77 hashfull 999 multipv 3 pv e7e5 e7e5 e2e4", reply.getInfoString(2).orElse(null));
         assertThrows(IllegalArgumentException.class, () -> reply.getInfoString(3));
         assertThrows(IllegalArgumentException.class, () -> reply.getInfoString(-1));
+        
     }
     
     @Test
     void testToString() {
-        GoReply reply = new GoReply(move1, move2);
+        GoReply reply = new GoReply(e2e4, e7e5);
         assertEquals("bestmove e2e4 e7e5", reply.toString());
 
-        GoReply reply2 = new GoReply(move1);
+        GoReply reply2 = new GoReply(e2e4);
         assertEquals("bestmove e2e4", reply2.toString());
 
         GoReply reply3 = new GoReply((UCIMove) null, null);
@@ -193,11 +208,14 @@ class GoReplyTest {
 
     @Test
     void testGetMainInfoStringAndGetInfoString() {
-        GoReply reply = new GoReply(move1);
+        GoReply reply = new GoReply(e2e4);
+        assertTrue(reply.getMainInfoString().isEmpty());
+        assertEquals("bestmove "+e2e4.toString(), reply.toString());
+
         GoReply.Info info = new GoReply.Info(10);
         info.setHashFull(500);
         info.setScoreBuilder(m -> Optional.of(new GoReply.CpScore(30)));
-        info.setPvBuilder(m -> Optional.of(List.of(move1, move2)));
+        info.setPvBuilder(m -> List.of(e2e4, e7e5));
         reply.setInfo(info);
 
         // Main info string
@@ -212,7 +230,7 @@ class GoReplyTest {
         testInfoString(expected, infoString0.get());
 
         // Info string for index 1 (extra move)
-        info.setExtraMoves(List.of(move2));
+        info.setExtraMoves(List.of(e7e5));
         Optional<String> infoString1 = reply.getInfoString(1);
         assertTrue(infoString1.isPresent());
         String expected1 = "info depth 10 score cp 30 hashfull 500 multipv 2 pv e2e4 e7e5";
@@ -222,6 +240,7 @@ class GoReplyTest {
     @Test
     void testGetMainInfoStringEmptyWhenNoMove() {
         GoReply reply = new GoReply((UCIMove) null);
+        assertEquals("bestmove (none)", reply.toString());
         assertTrue(reply.getMainInfoString().isEmpty());
     }
 }
