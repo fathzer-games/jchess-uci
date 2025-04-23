@@ -16,6 +16,7 @@
 		<check-dependencies-java-version>17</check-dependencies-java-version>
 	    <maven.compiler.release>17</maven.compiler.release>
 		<sonar.organization>fathzer-games</sonar.organization>
+		<sonar.coverage.exclusions>src/main/java/com/fathzer/jchess/uci/ConsoleLineReader.java</sonar.coverage.exclusions>
 	</properties>
 
 	<dependencies>

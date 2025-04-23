@@ -8,7 +8,6 @@ import static org.awaitility.Awaitility.*;
 
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -34,19 +33,11 @@ class UCITest {
 	private InstrumentedUCI uci;
 	private Engine engine;
 
-	protected static InstrumentedUCI startUCI(Engine engine) {
-		final InstrumentedUCI uci = new InstrumentedUCI(engine);
-		final Thread uciThread = new Thread(uci);
-		uciThread.setDaemon(true);
-		uciThread.start();
-		return uci;
-	}
-	
 	@BeforeEach
 	void setup() {
 		engine = mock(Engine.class);
 		when(engine.getId()).thenReturn("InstrumentedEngine");
-		uci = startUCI(engine);
+		uci = InstrumentedUCI.start(engine);
 		uci.post("ucinewgame");
 		uci.post("debug on");
 	}
@@ -60,7 +51,7 @@ class UCITest {
 	void unknownCommand() {
 		assertFalse(uci.post("cjhjhl"));
 		assertFalse(uci.out().isEmpty());
-		assertDebug(uci.out());
+		uci.assertDebug();
 	}
 	
 	@Test
@@ -72,13 +63,13 @@ class UCITest {
 		uci.out().clear();
 		uci.post("debug www");
 		assertFalse(uci.out().isEmpty());
-		assertDebug(uci.out());
+		uci.assertDebug();
 
 		// set debug without arg
 		uci.out().clear();
 		uci.post("debug");
 		assertFalse(uci.out().isEmpty());
-		assertDebug(uci.out());
+		uci.assertDebug();
 
 		// set debug off
 		uci.out().clear();
@@ -91,18 +82,6 @@ class UCITest {
 		assertTrue(uci.out().isEmpty());
 	}
 	
-	private void assertDebug(String string) {
-		assertTrue(isDebug(string), "expected \""+string+"\" started with \"info string \"");
-	}
-
-	private boolean isDebug(String string) {
-		return string.startsWith("info string ");
-	}
-
-	private void assertDebug(Collection<String> strings) {
-		strings.stream().forEach(this::assertDebug);
-	}
-
 	@Test
 	void testPositionAndNewGame() {
 		final StringBuilder position = new StringBuilder();
@@ -164,14 +143,14 @@ class UCITest {
 		uci.clear();
 		assertTrue(uci.post("position"));
 		assertFalse(uci.out().isEmpty());
-		assertDebug(uci.out());
+		uci.assertDebug();
 		assertFalse(uci.isPositionSet());
 
 		// Illegal position kind
 		uci.clear();
 		assertTrue(uci.post("position kjmlkjm"));
 		assertFalse(uci.out().isEmpty());
-		assertDebug(uci.out());
+		uci.assertDebug();
 		assertFalse(uci.isPositionSet());
 
 		// Illegal fen
@@ -179,7 +158,7 @@ class UCITest {
 		doThrow(new IllegalArgumentException("Invalid FEN")).when(engine).setStartPosition(anyString());
 		assertTrue(uci.post("position startpos"));
 		assertFalse(uci.out().isEmpty());
-		assertDebug(uci.out());
+		uci.assertDebug();
 		assertFalse(uci.isPositionSet());
 
 		// Illegal move
@@ -257,7 +236,7 @@ class UCITest {
 		
 		// Remove previous engine
 		assertNotNull(uci.removeEngine(id));
-		assertDebug(uci.out().get(0));
+		uci.assertDebug(uci.out().get(0));
 		String outMessage = uci.out().size()==1 ? null : uci.out().get(1);
 		assertEquals("engine titi ok", outMessage);
 		
@@ -272,12 +251,12 @@ class UCITest {
 		// Sets current engine
 		uci.clear();
 		uci.post("engine titi");
-		assertDebug(uci.out());
+		uci.assertDebug();
 		
 		// Sets unknown engine
 		uci.clear();
 		uci.post("engine toto");
-		assertDebug(uci.out());
+		uci.assertDebug();
 		assertTrue(uci.isPositionSet());
 	}
 	
@@ -298,7 +277,7 @@ class UCITest {
 		Engine other = mock(Engine.class);
 		when(other.getId()).thenReturn("other");
 		when(other.getAuthor()).thenReturn("me");
-		InstrumentedUCI myUCI = startUCI(other);
+		InstrumentedUCI myUCI = InstrumentedUCI.start(other);
 		try {
 			myUCI.post("uci");
 			assertEquals(Arrays.asList("id name "+other.getId(), "id author me", "uciok"), myUCI.out());
@@ -387,7 +366,7 @@ class UCITest {
 
 		// --------- Case 1: No position defined ---------
 		uci.post("go");
-		assertDebug(uci.out());
+		uci.assertDebug();
 		assertFalse(task.called.get());
 		assertNull(task.arg);
 
@@ -402,7 +381,7 @@ class UCITest {
 		await().atMost(timeout).until(()->!uci.isBackgroundRunning());
 		assertTrue(uci.getExceptions().isEmpty());
 		// Something is in debug output
-		assertDebug(uci.out().get(0));
+		uci.assertDebug(uci.out().get(0));
 		// Best move is returned
 		assertEquals("bestmove e2e4", uci.out().get(1));
 
@@ -424,7 +403,7 @@ class UCITest {
 		// Check nothing to stop
 		uci.post("stop");
 		assertFalse(uci.out().isEmpty());
-		assertDebug(uci.out());
+		uci.assertDebug();
 
 		// --------- Case 4: Engine already working ---------
 		uci.clear();
@@ -443,7 +422,7 @@ class UCITest {
 		// Check go doesn't start
 		uci.post("go");
 		assertFalse(task.called.get());
-		assertDebug(uci.out());
+		uci.assertDebug();
 		
 		// Kill background task
 		synchronized (UCITest.this) {
@@ -525,7 +504,7 @@ class UCITest {
 	void testInit() {
 		final String old = System.getProperty(UCI.INIT_COMMANDS_PROPERTY_FILE);
 		System.setProperty(UCI.INIT_COMMANDS_PROPERTY_FILE, "src/test/resources/initFile.txt");
-		try (UCI other = startUCI(mock(Engine.class))) {
+		try (UCI other = InstrumentedUCI.start(mock(Engine.class))) {
 			try {
 				await().atMost(1, TimeUnit.SECONDS).until(other::isPositionSet);
 				assertTrue(other.isDebugMode());

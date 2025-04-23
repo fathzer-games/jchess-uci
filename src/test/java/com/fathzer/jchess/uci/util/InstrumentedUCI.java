@@ -1,5 +1,7 @@
 package com.fathzer.jchess.uci.util;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.io.EOFException;
 import java.io.UncheckedIOException;
 import java.util.Collections;
@@ -17,9 +19,9 @@ import com.fathzer.games.util.UncheckedException;
 
 import com.fathzer.jchess.uci.Engine;
 import com.fathzer.jchess.uci.ThrowingRunnable;
-import com.fathzer.jchess.uci.UCI;
+import com.fathzer.jchess.uci.extended.ExtendedUCI;
 
-public class InstrumentedUCI extends UCI {
+public class InstrumentedUCI extends ExtendedUCI {
 	private static final int TIME_OU_MS = 1000;
 
 	public static class UnknownCommandException extends RuntimeException {
@@ -29,6 +31,15 @@ public class InstrumentedUCI extends UCI {
 			super(command);
 		}
 	}
+	
+	public static InstrumentedUCI start(Engine engine) {
+		final InstrumentedUCI uci = new InstrumentedUCI(engine);
+		final Thread uciThread = new Thread(uci);
+		uciThread.setDaemon(true);
+		uciThread.start();
+		return uci;
+	}
+
 	
 	private final BlockingQueue<String> input;
 	private final List<String> output;
@@ -131,4 +142,17 @@ public class InstrumentedUCI extends UCI {
 	public boolean isBackgroundRunning() {
 		return backgroundRunning.get();
 	}
+	
+	public void assertDebug(String string) {
+		assertTrue(isDebug(string), "expected \""+string+"\" started with \"info string \"");
+	}
+
+	private boolean isDebug(String string) {
+		return string.startsWith("info string ");
+	}
+
+	public void assertDebug() {
+		output.stream().forEach(this::assertDebug);
+	}
+
 }
