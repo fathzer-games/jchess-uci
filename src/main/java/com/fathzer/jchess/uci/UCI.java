@@ -1,11 +1,8 @@
 package com.fathzer.jchess.uci;
 
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.EOFException;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -37,12 +34,13 @@ public class UCI implements Runnable, AutoCloseable {
 	/** If the file whose path is in this system property exists, the commands it contains will be executed when the engine is started. */
 	public static final String INIT_COMMANDS_PROPERTY_FILE = "uciInitCommands";
 
-	private static final BufferedReader IN = new BufferedReader(new InputStreamReader(System.in));
 	private static final String MOVES = "moves";
 	private static final String ENGINE_CMD = "engine";
 	private static final String GO_CMD = "go";
 	private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.nnnnnnnn");
 	
+	private Supplier<String> in;
+
 	/** The current engine. */
 	protected Engine engine;
 
@@ -73,11 +71,6 @@ public class UCI implements Runnable, AutoCloseable {
 		addCommand(this::doStop, "stop");
 		addCommand(this::doEngine,ENGINE_CMD);
 		addCommand(this::doQuit, "quit", "q");
-		if (System.console()!=null) {
-			log(false, "Input from System.console()");
-		} else {
-			log(false, "Input from System.in");
-		}
 	}
 	
 	/** Adds a new engine.
@@ -457,6 +450,19 @@ public class UCI implements Runnable, AutoCloseable {
 			throw new UncheckedIOException(e);
 		}
 	}
+	
+	/** Gets the input reader.
+	 * <br>The default implementation returns a reader that gets commands from the standard console.
+	 * <br>One can override this method in order to get commands from somewhere other than standard console input.
+	 * <br>The returned supplier should block until a line is available. If the end of input is reached, it should throw an {@link UncheckedIOException}.
+	 * @return The input reader.
+	 */
+	protected Supplier<String> getInputSupplier() {
+		if (in==null) {
+			in = new ConsoleLineReader();
+		}
+		return in;
+	}
 
 	/** Gets the next command from UCI client.
 	 * <br>This method blocks until a command is available.
@@ -464,16 +470,7 @@ public class UCI implements Runnable, AutoCloseable {
 	 * @return The next command
 	 */
 	protected String getNextCommand() {
-		String line;
-	    try {
-	        line = System.console() == null ? IN.readLine() : System.console().readLine();
-	        if (line==null) {
-	        	throw new EOFException("End of system input has been reached");
-	        }
-	    } catch (IOException e) {
-	    	throw new UncheckedIOException(e);
-	    }
-    	return line.trim();
+    	return getInputSupplier().get().trim();
 	}
 	
 	/** Send a reply to UCI client.

@@ -1,5 +1,7 @@
 package com.fathzer.jchess.uci.util;
 
+import java.io.EOFException;
+import java.io.UncheckedIOException;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -9,6 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import com.fathzer.games.util.UncheckedException;
 
@@ -31,22 +34,26 @@ public class InstrumentedUCI extends UCI {
 	private final List<String> output;
 	private final Map<String, Throwable> exceptions;
 	private final AtomicBoolean backgroundRunning = new AtomicBoolean();
+	private final Supplier<String> in;
 	
 	public InstrumentedUCI(Engine defaultEngine) {
 		super(defaultEngine);
 		input = new LinkedBlockingQueue<String>();
 		output = Collections.synchronizedList(new LinkedList<String>());
 		this.exceptions = new ConcurrentHashMap<>();
+		in = () -> {
+			try {
+				return input.take();
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				throw new UncheckedIOException(new EOFException());
+			}
+		};
 	}
 
 	@Override
-	protected String getNextCommand() {
-		try {
-			return input.take();
-		} catch (InterruptedException e) {
-			Thread.currentThread().interrupt();
-			return null;
-		}
+	protected Supplier<String> getInputSupplier() {
+		return in;
 	}
 
 	@Override

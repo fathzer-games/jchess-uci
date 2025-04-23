@@ -419,6 +419,12 @@ class UCITest {
 		uci.post("stop");
 		await().atMost(timeout).until(()->task.stopped.get() && !uci.isBackgroundRunning());
 		assertEquals("bestmove e2e4", uci.out().get(0));
+		
+		uci.clear();
+		// Check nothing to stop
+		uci.post("stop");
+		assertFalse(uci.out().isEmpty());
+		assertDebug(uci.out());
 
 		// --------- Case 4: Engine already working ---------
 		uci.clear();
@@ -505,6 +511,33 @@ class UCITest {
 			final Optional<String> caused = out.stream().filter(s -> s.startsWith("caused by")).findFirst();
 			assertTrue(caused.isPresent());
 			assertEquals("caused by java.lang.IllegalArgumentException: a", caused.get());
+		}
+	}
+	
+	@Test
+	void testIsDebug() {
+		assertTrue(uci.isDebugMode());
+		uci.post("debug off");
+		assertFalse(uci.isDebugMode());
+	}
+	
+	@Test
+	void testInit() {
+		final String old = System.getProperty(UCI.INIT_COMMANDS_PROPERTY_FILE);
+		System.setProperty(UCI.INIT_COMMANDS_PROPERTY_FILE, "src/test/resources/initFile.txt");
+		try (UCI other = startUCI(mock(Engine.class))) {
+			try {
+				await().atMost(1, TimeUnit.SECONDS).until(other::isPositionSet);
+				assertTrue(other.isDebugMode());
+			} finally {
+				((InstrumentedUCI)other).post("q");
+			}
+		} finally {
+			if (old==null) {
+				System.clearProperty(UCI.INIT_COMMANDS_PROPERTY_FILE);
+			} else {
+				System.setProperty(UCI.INIT_COMMANDS_PROPERTY_FILE, old);
+			}
 		}
 	}
 }
