@@ -421,7 +421,7 @@ public class UCI implements Runnable, AutoCloseable {
 	}
 	
 	private void err(Throwable e, int level) {
-		err((level>0 ? "caused by":"")+e.toString());
+		err((level>0 ? "caused by ":"")+e.toString());
 		Arrays.stream(e.getStackTrace()).forEach(f -> err(f.toString()));
 		if (e.getCause()!=null) {
 			err(e.getCause(),level+1);

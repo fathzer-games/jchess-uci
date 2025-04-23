@@ -106,15 +106,25 @@ public class GoReply {
 		}
 
 		/** Sets a function to build the principal variation of best and extra moves.
+		 * <br>The default function returns a singleton list with the move passed as parameter.
 		 * @param pvBuilder A function that returns the principal variation (an empty list if variation is unavailable).
+		 * @throws IllegalArgumentException if the pvBuilder is null
 		 */
 		public void setPvBuilder(Function<UCIMove, List<UCIMove>> pvBuilder) {
+			if (pvBuilder==null) {
+				throw new IllegalArgumentException("pvBuilder cannot be null");
+			}
 			this.pvBuilder = pvBuilder;
 		}
 		/** Sets a function to build the score of best and extra moves.
+		 * <br>The default function returns an empty optional.
 		 * @param scoreBuilder A function that returns the score or an empty optional if no score is available.
+		 * @throws IllegalArgumentException if the scoreBuilder is null
 		 */
 		public void setScoreBuilder(Function<UCIMove, Optional<Score>> scoreBuilder) {
+			if (scoreBuilder==null) {
+				throw new IllegalArgumentException("scoreBuilder cannot be null");
+			}
 			this.scoreBuilder = scoreBuilder;
 		}
 	}

@@ -109,7 +109,7 @@ public class InstrumentedUCI extends UCI {
 	}
 
 	@Override
-	protected boolean doBackground(ThrowingRunnable task, Runnable stopper, Consumer<Exception> logger) {
+	public boolean doBackground(ThrowingRunnable task, Runnable stopper, Consumer<Exception> logger) {
 		backgroundRunning.set(true);
 		ThrowingRunnable internalTask = () -> {
 			try {

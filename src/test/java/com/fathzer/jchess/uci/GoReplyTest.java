@@ -179,7 +179,6 @@ class GoReplyTest {
         // Test without pv or score builder
         testInfoString("info depth 5 hashfull 999 multipv 2 pv e2e4", reply.getInfoString(1).orElse(null));
         
-
         // pvBuilder and scoreBuilder
         info.setPvBuilder(m -> {
         	return Arrays.asList(m, e7e5, e2e4);
@@ -192,6 +191,9 @@ class GoReplyTest {
         assertThrows(IllegalArgumentException.class, () -> reply.getInfoString(3));
         assertThrows(IllegalArgumentException.class, () -> reply.getInfoString(-1));
         
+        // Test null pv and score builder
+        assertThrows(IllegalArgumentException.class, () -> info.setPvBuilder(null));
+        assertThrows(IllegalArgumentException.class, () -> info.setScoreBuilder(null));
     }
     
     @Test

@@ -10,10 +10,15 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.awaitility.core.DurationFactory;
 import org.junit.jupiter.api.AfterEach;
@@ -327,6 +332,7 @@ class UCITest {
 	}
 	
 	private static class InstrumentedGoTask implements StoppableTask<GoReply> {
+		private long durationMs = 100;
 		private GoParameters arg;
 		private AtomicBoolean called = new AtomicBoolean();
 		private GoReply reply;
@@ -341,14 +347,18 @@ class UCITest {
 			called.set(true);
 			stopped.set(false);
 			synchronized (this) {
-				wait(100);
+				wait(durationMs);
 			}
+			return answer();
+		}
+		
+		protected GoReply answer() {
 			return reply;
 		}
 
 		@Override
 		public void stop() {
-			stopped.set(false);
+			stopped.set(true);
 			synchronized (this) {
 				notifyAll();
 			}
@@ -357,6 +367,8 @@ class UCITest {
 		void clear() {
 			arg = null;
 			called.set(false);
+			stopped.set(false);
+			durationMs = 100;
 		}
 	}
 	
@@ -383,7 +395,7 @@ class UCITest {
 		uci.post("position startpos");
 
 		// --------- Case 2: Position set with invalid params ---------
-		Duration timeout = DurationFactory.of(60, TimeUnit.SECONDS);
+		Duration timeout = DurationFactory.of(1, TimeUnit.SECONDS);
 		uci.clear();
 		task.clear();
 		uci.post("go xtime acx");
@@ -394,19 +406,46 @@ class UCITest {
 		// Best move is returned
 		assertEquals("bestmove e2e4", uci.out().get(1));
 
-/*
-		// --------- Case 3: Engine already working ---------
-		doReturn(Optional.of(params)).when(goCommand).parse(any(), any(), any());
-		when(engine.go(params)).thenReturn(task);
-		doReturn(false).when(goCommand).doBackground(any(), any(), any());
+		// --------- Case 3: Test with valid parameters and stop ---------
+		uci.clear();
+		task.clear();
+		task.durationMs = 2000;
+		
+		uci.post("go");
+		await().pollDelay(100, TimeUnit.MILLISECONDS).atLeast(100, TimeUnit.MILLISECONDS).until(()->true);
+		assertTrue(task.called.get());
+		assertTrue(uci.isBackgroundRunning());
+		assertFalse(task.stopped.get());
+		uci.post("stop");
+		await().atMost(timeout).until(()->task.stopped.get() && !uci.isBackgroundRunning());
+		assertEquals("bestmove e2e4", uci.out().get(0));
 
-		goCommand.doGo(tokens);
-		verify(goCommand).debug("Engine is already working");
+		// --------- Case 4: Engine already working ---------
+		uci.clear();
+		task.clear();
+		task.durationMs = 2000;
+		
+		final ThrowingRunnable t = () -> {
+			synchronized (UCITest.this) {
+				UCITest.this.wait(60000);
+			}
+		};
+		// launch a background task (that could be another go, or something else like perfT computation
+		assertTrue(uci.doBackground(t, null, e -> { throw new IllegalStateException(e);}));
+		assertTrue(uci.isBackgroundRunning());
 
-		clearInvocations(goCommand);
-*/
-
-		// --------- Case 4: processGo with full info and valid parameters ---------
+		// Check go doesn't start
+		uci.post("go");
+		assertFalse(task.called.get());
+		assertDebug(uci.out());
+		
+		// Kill background task
+		synchronized (UCITest.this) {
+			UCITest.this.notifyAll();
+		}
+		await().atMost(timeout).until(()->!uci.isBackgroundRunning());
+		
+		// --------- Case 5: Go with some extra info ---------
 		uci.clear();
 		task.clear();
 		
@@ -414,14 +453,58 @@ class UCITest {
 		reply.setInfo(info);
 		info.setExtraMoves(Arrays.asList(UCIMove.from("d2d4"), UCIMove.from("b1c3")));
 
-		uci.post("go wtime 100");
+		uci.post("go movetime 100");
 		await().atMost(timeout).until(()->!uci.isBackgroundRunning());
+		assertEquals(100, task.arg.getTimeOptions().getMoveTimeMs());
 		assertTrue(uci.getExceptions().isEmpty());
 		List<String> out = uci.out();
 		assertEquals("bestmove e2e4", out.remove(out.size()-1));
-		System.out.println(uci.out());
+		final Set<String> expected = IntStream.range(0, 3).mapToObj(reply::getInfoString).map(Optional::get).collect(Collectors.toSet());
+		assertEquals(expected, new HashSet<>(uci.out()));
+	}
+	
+	@Test
+	void tesGoFails() {
+		uci.post("position startpos");
 		
-		// --------- Case 5: processGo throws an exception ---------
-		//TODO
+		GoReply reply = new GoReply(null);
+		InstrumentedGoTask failingTask = new InstrumentedGoTask(reply) {
+			@Override
+			protected GoReply answer() {
+				throw new IllegalArgumentException("An error occurred in engine");
+			}
+		};
+		when(engine.go(any(GoParameters.class))).thenAnswer(new Answer<StoppableTask<GoReply>>() {
+		    @Override
+		    public StoppableTask<GoReply> answer(InvocationOnMock invocation) throws Throwable {
+		        return failingTask;
+		    }
+		    });
+		uci.post("go");
+		Duration timeout = DurationFactory.of(1, TimeUnit.SECONDS);
+		await().atMost(timeout).until(()->!uci.isBackgroundRunning());
+		assertEquals(IllegalArgumentException.class, uci.getExceptions().get("go").getClass());
+		assertTrue(uci.out().isEmpty());
+	}
+	
+	@Test
+	void testErr() {
+		final List<String> out = new LinkedList<>();
+		try (UCI myUCI = new UCI(mock(Engine.class)) {
+			@Override
+			protected void err(CharSequence message) {
+				out.add(message.toString());
+			}
+			
+		};) {
+			Exception a = new IllegalArgumentException("a");
+			Exception b = new IllegalStateException("b", a);
+			myUCI.err("tag", b);
+			assertEquals("Error with tag tag", out.get(0));
+			assertEquals(b.toString(), out.get(1));
+			final Optional<String> caused = out.stream().filter(s -> s.startsWith("caused by")).findFirst();
+			assertTrue(caused.isPresent());
+			assertEquals("caused by java.lang.IllegalArgumentException: a", caused.get());
+		}
 	}
 }
