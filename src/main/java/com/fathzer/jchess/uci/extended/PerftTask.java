@@ -23,7 +23,7 @@ class PerftTask<M> implements StoppableTask<PerfTResult<M>> {
 
 	@Override
 	public PerfTResult<M> call() {
-		final PerfTBuilder<M> builder = new PerfTBuilder<>();
+		final PerfTBuilder<M> builder = createBuilder();
 		if (params.isLegal()) {
 			builder.setLegalMoves(true);
 			if (!params.isPlayLeaves()) {
@@ -38,11 +38,18 @@ class PerftTask<M> implements StoppableTask<PerfTResult<M>> {
 		} finally {
 			exec.shutdown();
 		}
-	} 
-
-	@Override
-	public void stop() {
-		perft.interrupt();
 	}
 
+	PerfTBuilder<M> createBuilder() {
+		return new PerfTBuilder<>();
+	}
+	
+	@Override
+	public void stop() {
+		if (perft!=null) {
+			perft.interrupt();
+		} else {
+			throw new IllegalStateException("Try to stop a non started task");
+		}
+	}
 }

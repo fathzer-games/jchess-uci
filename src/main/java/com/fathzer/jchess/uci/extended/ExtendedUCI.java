@@ -36,7 +36,7 @@ import com.fathzer.jchess.uci.parameters.PerfTParameters;
  * </ul>
  */
  public class ExtendedUCI extends UCI {
-	//TODO Warning not sure of what this command does <b>block</b> command. It should be documented later.
+	//TODO Warning not sure of what <b>block</b> command does. It should be documented later.
 	private static final String PERFT_COMMAND = "perft";
 	private static final String TEST_COMMAND = "test";
 	
