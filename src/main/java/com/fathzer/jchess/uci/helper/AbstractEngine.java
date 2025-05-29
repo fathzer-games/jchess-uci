@@ -112,6 +112,7 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 	}
 
 	/** Builds the transposition table.
+	 * <br>This method is called by {@link #setHashTableSize(int)} when the hash table size is changed.
 	 * @param sizeInMB the size of the table in MB
 	 * @return the transposition table
 	 */

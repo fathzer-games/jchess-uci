@@ -15,6 +15,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Test;
 
 import com.fathzer.games.MoveGenerator;
+import com.fathzer.games.ai.evaluation.Evaluator;
 import com.fathzer.games.ai.iterativedeepening.DeepeningPolicy;
 import com.fathzer.games.ai.iterativedeepening.IterativeDeepeningEngine;
 import com.fathzer.games.ai.iterativedeepening.IterativeDeepeningSearch;
@@ -25,6 +26,7 @@ import com.fathzer.jchess.uci.GoReply;
 import com.fathzer.jchess.uci.StoppableTask;
 import com.fathzer.jchess.uci.UCIMove;
 import com.fathzer.jchess.uci.UsualOptions;
+import com.fathzer.jchess.uci.option.ComboOption;
 import com.fathzer.jchess.uci.option.Option;
 import com.fathzer.jchess.uci.parameters.GoParameters;
 
@@ -63,6 +65,7 @@ class AbstractEngineTest {
 
 		final AtomicInteger count = new AtomicInteger();
 		final AtomicBoolean newGameCalled = new AtomicBoolean();
+		@SuppressWarnings("unchecked")
 		TranspositionTable<String, MoveGenerator<String>> initialTt = mock(TranspositionTable.class);
 		when(initialTt.getMemorySizeMB()).thenReturn(32);
 		final IterativeDeepeningEngine<String, MoveGenerator<String>> iter = new IterativeDeepeningEngine<>(new DeepeningPolicy(6), initialTt, ()->null);
@@ -169,8 +172,23 @@ class AbstractEngineTest {
 		when(mockEngine.getDeepeningPolicy()).thenReturn(new DeepeningPolicy(5));
 		AbstractEngine<String, MoveGenerator<String>> engine = new MyEngine(mockEngine, TM);
 		Map<String, Option<?>> options = engine.getOptions();
-		System.out.println(options);
 		assertEquals(Set.of(UsualOptions.THREADS_NAME, UsualOptions.MULTI_PV_NAME, "depth", "maxtime"), options.keySet());
+
+		@SuppressWarnings("unchecked")
+		Evaluator<String, MoveGenerator<String>> evaluator1 = mock(Evaluator.class);
+		@SuppressWarnings("unchecked")
+		Evaluator<String, MoveGenerator<String>> evaluator2 = mock(Evaluator.class);
+		engine.setEvaluators(List.of(new EvaluatorConfiguration<>("eval1", () -> evaluator1), new EvaluatorConfiguration<>("eval2", () -> evaluator2)));
+		options = engine.getOptions();
+		assertEquals(Set.of(UsualOptions.THREADS_NAME, UsualOptions.MULTI_PV_NAME, "depth", "maxtime", "evaluation"), options.keySet());
+		ComboOption evaluators = (ComboOption) options.get("evaluation");
+		assertEquals("eval1", evaluators.getValue());
+		assertEquals("option name evaluation type combo default eval1 var eval2 var eval1", evaluators.toUCI());
+
+		assertThrows(IllegalArgumentException.class, () -> evaluators.setValue("eval3"));
+		// Check that the value is changed with no error
+		evaluators.setValue("eval2");
+		assertEquals("eval2", evaluators.getValue());
 	}
 
 	@Test
