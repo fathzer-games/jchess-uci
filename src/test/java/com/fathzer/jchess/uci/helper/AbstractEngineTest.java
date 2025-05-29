@@ -6,6 +6,8 @@ import static org.mockito.Mockito.*;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -22,32 +24,50 @@ import com.fathzer.games.clock.CountDownState;
 import com.fathzer.jchess.uci.GoReply;
 import com.fathzer.jchess.uci.StoppableTask;
 import com.fathzer.jchess.uci.UCIMove;
+import com.fathzer.jchess.uci.UsualOptions;
+import com.fathzer.jchess.uci.option.Option;
 import com.fathzer.jchess.uci.parameters.GoParameters;
 
 class AbstractEngineTest {
+	@SuppressWarnings("unchecked")
+	private static TimeManager<MoveGenerator<String>> TM = mock(TimeManager.class);
+
+	private static class MyEngine extends AbstractEngine<String, MoveGenerator<String>> {
+		MyEngine(IterativeDeepeningEngine<String, MoveGenerator<String>> engine, TimeManager<MoveGenerator<String>> timeManager) {
+			super(engine, timeManager);
+		}
+		@Override
+		public UCIMove toUCI(String move) {
+			return UCIMove.from(move);
+		}
+		
+		@Override
+		public void setStartPosition(String fen) {
+			// This is a fake engine, it ignores the position
+		}
+		
+		@Override
+		protected String toMove(UCIMove move) {
+			return move.toString();
+		}
+
+		@Override
+		protected TranspositionTable<String, MoveGenerator<String>> buildTranspositionTable(int sizeInMB) {
+			return null;
+		}
+	}
+	
 	@Test
 	void hashTableRelatedTest() {
-		final IterativeDeepeningEngine<String, MoveGenerator<String>> iter = new IterativeDeepeningEngine<>(new DeepeningPolicy(6), null, ()->null);
+		assertEquals(-1, new MyEngine(new IterativeDeepeningEngine<>(new DeepeningPolicy(6), null, ()->null), TM).getDefaultHashTableSize());
+
 		final AtomicInteger count = new AtomicInteger();
 		final AtomicBoolean newGameCalled = new AtomicBoolean();
+		TranspositionTable<String, MoveGenerator<String>> initialTt = mock(TranspositionTable.class);
+		when(initialTt.getMemorySizeMB()).thenReturn(32);
+		final IterativeDeepeningEngine<String, MoveGenerator<String>> iter = new IterativeDeepeningEngine<>(new DeepeningPolicy(6), initialTt, ()->null);
 
-		@SuppressWarnings("unchecked")
-		AbstractEngine<String, MoveGenerator<String>> engine = new AbstractEngine<String, MoveGenerator<String>>(iter, mock(TimeManager.class)) {
-			@Override
-			public UCIMove toUCI(String move) {
-				return UCIMove.from(move);
-			}
-			
-			@Override
-			public void setStartPosition(String fen) {
-				// Nothing to do
-			}
-			
-			@Override
-			protected String toMove(UCIMove move) {
-				return move.toString();
-			}
-			
+		AbstractEngine<String, MoveGenerator<String>> engine = new MyEngine(iter, TM) {
 			@Override
 			protected TranspositionTable<String, MoveGenerator<String>> buildTranspositionTable(int sizeInMB) {
 				@SuppressWarnings("unchecked")
@@ -61,7 +81,7 @@ class AbstractEngineTest {
 				return tt;
 			}
 		};
-		assertEquals(0, engine.getDefaultHashTableSize());
+		assertEquals(32, engine.getDefaultHashTableSize());
 		
 		engine.setHashTableSize(16);
 		assertEquals(16, engine.getEngine().getTranspositionTable().getMemorySizeMB());
@@ -115,30 +135,10 @@ class AbstractEngineTest {
 			}
 		};
 		
-		AbstractEngine<String, MoveGenerator<String>> ae = new AbstractEngine<>(engine, tm) {
+		AbstractEngine<String, MoveGenerator<String>> ae = new MyEngine(engine, tm) {
 			@Override
 			public String getId() {
 				return "fake";
-			}
-
-			@Override
-			public void setStartPosition(String fen) {
-				// This is a fake engine, it ignores the position
-			}
-
-			@Override
-			public UCIMove toUCI(String move) {
-				return UCIMove.from(move);
-			}
-
-			@Override
-			protected TranspositionTable<String, MoveGenerator<String>> buildTranspositionTable(int sizeInMB) {
-				return null;
-			}
-
-			@Override
-			protected String toMove(UCIMove move) {
-				return move.toString();
 			}
 		};
 		
@@ -149,5 +149,53 @@ class AbstractEngineTest {
 		assertThrows(RuntimeException.class, task::call);
 		assertEquals(1000, lastMaxTime.get());
 		assertEquals(maxTime, engine.getDeepeningPolicy().getMaxTime());
+	}
+	
+	@Test
+	void newGameTest() {
+		@SuppressWarnings("unchecked")
+		IterativeDeepeningEngine<String, MoveGenerator<String>> mockEngine = mock(IterativeDeepeningEngine.class);
+		when(mockEngine.getDeepeningPolicy()).thenReturn(new DeepeningPolicy(10));
+		AbstractEngine<String, MoveGenerator<String>> engine = new MyEngine(mockEngine, TM);
+		engine.newGame();
+		verify(mockEngine, times(1)).newGame();
+	}
+
+	@Test
+	void getOptionsTest() {
+		@SuppressWarnings("unchecked")
+		IterativeDeepeningEngine<String, MoveGenerator<String>> mockEngine = mock(IterativeDeepeningEngine.class);
+		when(mockEngine.getParallelism()).thenReturn(2);
+		when(mockEngine.getDeepeningPolicy()).thenReturn(new DeepeningPolicy(5));
+		AbstractEngine<String, MoveGenerator<String>> engine = new MyEngine(mockEngine, TM);
+		Map<String, Option<?>> options = engine.getOptions();
+		System.out.println(options);
+		assertEquals(Set.of(UsualOptions.THREADS_NAME, UsualOptions.MULTI_PV_NAME, "depth", "maxtime"), options.keySet());
+	}
+
+	@Test
+	void moveTest() {
+		@SuppressWarnings("unchecked")
+		MoveGenerator<String> mockBoard = mock(MoveGenerator.class);
+		@SuppressWarnings("unchecked")
+		IterativeDeepeningEngine<String, MoveGenerator<String>> mockEngine = mock(IterativeDeepeningEngine.class);
+		when(mockEngine.getDeepeningPolicy()).thenReturn(new DeepeningPolicy(5));
+		AbstractEngine<String, MoveGenerator<String>> engine = new MyEngine(mockEngine, TM);
+		engine.board = mockBoard;
+		UCIMove move = UCIMove.from("e2e4");
+		engine.move(move);
+		verify(mockBoard, times(1)).makeMove("e2e4", MoveGenerator.MoveConfidence.LEGAL);
+	}
+
+	@Test
+	void getMoveGeneratorTest() {
+		@SuppressWarnings("unchecked")
+		MoveGenerator<String> mockBoard = mock(MoveGenerator.class);
+		@SuppressWarnings("unchecked")
+		IterativeDeepeningEngine<String, MoveGenerator<String>> mockEngine = mock(IterativeDeepeningEngine.class);
+		when(mockEngine.getDeepeningPolicy()).thenReturn(new DeepeningPolicy(5));
+		AbstractEngine<String, MoveGenerator<String>> engine = new MyEngine(mockEngine, TM);
+		engine.board = mockBoard;
+		assertEquals(mockBoard, engine.getMoveGenerator());
 	}
 }

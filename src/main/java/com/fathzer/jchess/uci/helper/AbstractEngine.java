@@ -68,7 +68,7 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 	protected AbstractEngine(IterativeDeepeningEngine<M, B> engine, TimeManager<B> timeManager) {
 		this.engine = engine;
 		final TranspositionTable<M, B> transpositionTable = engine.getTranspositionTable();
-		this.ttSizeInMB = transpositionTable==null ? 0 : transpositionTable.getMemorySizeMB();
+		this.ttSizeInMB = transpositionTable==null ? -1 : transpositionTable.getMemorySizeMB();
 		this.defaultThreads = engine.getParallelism();
 		this.defaultDepth = engine.getDeepeningPolicy().getDepth();
 		this.defaultMaxTime = engine.getDeepeningPolicy().getMaxTime();
@@ -82,8 +82,8 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 	 */
 	protected void setEvaluators(List<EvaluatorConfiguration<M, B>> evaluators) {
 		evaluatorBuilders.clear();
-		defaultEvaluator = evaluators.isEmpty() ? null : evaluators.get(0).getName();
-		evaluators.forEach(e -> evaluatorBuilders.put(e.getName(), e.getBuilder()));
+		defaultEvaluator = evaluators.isEmpty() ? null : evaluators.get(0).name();
+		evaluators.forEach(e -> evaluatorBuilders.put(e.name(), e.evaluatorBuilder()));
 	}
 	
 	@Override
