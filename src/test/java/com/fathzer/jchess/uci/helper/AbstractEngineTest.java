@@ -1,6 +1,8 @@
 package com.fathzer.jchess.uci.helper;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.*;
 
 import java.util.Arrays;
@@ -14,15 +16,21 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.jupiter.api.Test;
 
+import com.fathzer.games.HashProvider;
 import com.fathzer.games.MoveGenerator;
+import com.fathzer.games.ai.evaluation.EvaluatedMove;
+import com.fathzer.games.ai.evaluation.Evaluation;
 import com.fathzer.games.ai.evaluation.Evaluator;
 import com.fathzer.games.ai.iterativedeepening.DeepeningPolicy;
 import com.fathzer.games.ai.iterativedeepening.IterativeDeepeningEngine;
 import com.fathzer.games.ai.iterativedeepening.IterativeDeepeningSearch;
+import com.fathzer.games.ai.iterativedeepening.SearchHistory;
 import com.fathzer.games.ai.time.TimeManager;
 import com.fathzer.games.ai.transposition.TranspositionTable;
 import com.fathzer.games.clock.CountDownState;
 import com.fathzer.jchess.uci.GoReply;
+import com.fathzer.jchess.uci.GoReply.CpScore;
+import com.fathzer.jchess.uci.GoReply.Info;
 import com.fathzer.jchess.uci.StoppableTask;
 import com.fathzer.jchess.uci.UCIMove;
 import com.fathzer.jchess.uci.UsualOptions;
@@ -138,12 +146,7 @@ class AbstractEngineTest {
 			}
 		};
 		
-		AbstractEngine<String, MoveGenerator<String>> ae = new MyEngine(engine, tm) {
-			@Override
-			public String getId() {
-				return "fake";
-			}
-		};
+		AbstractEngine<String, MoveGenerator<String>> ae = new MyEngine(engine, tm);
 		
 		// Check settings changes engine config
 		GoParameters params = new GoParameters();
@@ -152,6 +155,53 @@ class AbstractEngineTest {
 		assertThrows(RuntimeException.class, task::call);
 		assertEquals(1000, lastMaxTime.get());
 		assertEquals(maxTime, engine.getDeepeningPolicy().getMaxTime());
+	}
+
+	@Test
+	void GoTest() throws Exception {
+		@SuppressWarnings("unchecked")
+		TranspositionTable<String, MoveGenerator<String>> tt = mock(TranspositionTable.class);
+		when(tt.getEntryCount()).thenReturn(32);
+		when(tt.getSize()).thenReturn(64);
+		when(tt.collectPV(any(), any(), anyInt())).thenReturn(List.of("a1a2", "b1b2"));
+		final DeepeningPolicy deepeningPolicy = new DeepeningPolicy(2);
+		deepeningPolicy.setSize(2);
+		IterativeDeepeningEngine<String, MoveGenerator<String>> engine = new IterativeDeepeningEngine<>(deepeningPolicy, tt, null) {
+			@Override
+			public SearchHistory<String> getBestMoves(MoveGenerator<String> board, List<String> searchedMoves) {
+				SearchHistory<String> history = new SearchHistory<>(getDeepeningPolicy());
+				final EvaluatedMove<String> mv1d1 = new EvaluatedMove<>("e2e4", Evaluation.score(4000));
+				final EvaluatedMove<String> mv2d1 = new EvaluatedMove<>("e2e5", Evaluation.score(3000));
+				final EvaluatedMove<String> mv3d1 = new EvaluatedMove<>("d2d4", Evaluation.score(0));
+				history.add(List.of(mv1d1, mv2d1, mv3d1), 1);
+				final EvaluatedMove<String> mv1d2 = new EvaluatedMove<>("e2e4", Evaluation.score(4000));
+				final EvaluatedMove<String> mv2d2 = new EvaluatedMove<>("e2e5", Evaluation.score(5000));
+				final EvaluatedMove<String> mv3d2 = new EvaluatedMove<>("d2d4", Evaluation.score(0));
+				history.add(List.of(mv2d2, mv1d2, mv3d2), 2);
+				return history;
+			}
+
+		};
+		@SuppressWarnings("unchecked")
+		MoveGenerator<String> board = mock(MoveGenerator.class, withSettings().extraInterfaces(HashProvider.class));
+		when(board.isWhiteToMove()).thenReturn(true);
+		AbstractEngine<String, MoveGenerator<String>> ae = new MyEngine(engine, TM);
+		ae.board = board;
+		
+		GoParameters params = new GoParameters();
+		GoParameters.PARSER.parse(params, new LinkedList<>(Arrays.asList(("multipv 2").split(" "))));
+		StoppableTask<GoReply> task = ae.go(params);
+		final GoReply reply = task.call();
+
+		UCIMove best = reply.getMove().get();
+		assertEquals("e2e5", best.toString());
+		final Info info = reply.getInfo().get();
+		assertEquals(2, info.getDepth());
+		assertEquals(500, info.getHashFull());
+		assertEquals(List.of("e2e4"), info.getExtraMoves().stream().map(UCIMove::toString).toList());
+		assertEquals(new CpScore(5000), info.getScore(best).get());
+		assertEquals(new CpScore(4000), info.getScore(info.getExtraMoves().get(0)).get());
+		assertEquals(List.of("a1a2", "b1b2"), info.getPv(best).stream().map(UCIMove::toString).toList());
 	}
 	
 	@Test

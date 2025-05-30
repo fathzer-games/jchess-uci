@@ -96,6 +96,20 @@ public class GoReply {
 		public List<UCIMove> getExtraMoves() {
 			return extraMoves;
 		}
+		/** Gets the principal variation of a move.
+		 * @param move The move
+		 * @return The principal variation of the move
+		 */
+		public List<UCIMove> getPv(UCIMove move) {
+			return pvBuilder.apply(move);
+		}
+		/** Gets the score of a move.
+		 * @param move The move
+		 * @return The score of the move
+		 */
+		public Optional<Score> getScore(UCIMove move) {
+			return scoreBuilder.apply(move);
+		}
 
 		/** Sets the extra moves.
 		 * <br>This method allows to return additional 'best' moves when <i>MultiPV</i> is set and is not 1
@@ -205,7 +219,7 @@ public class GoReply {
 			builder.append("depth ").append(info.depth);
 		}
 		final UCIMove move = index==0 ? bestMove : info.extraMoves.get(index-1);
-		final Optional<Score> score = info.scoreBuilder.apply(move);
+		final Optional<Score> score = info.getScore(move);
 		if (score.isPresent()) {
 			if (!builder.isEmpty()) {
 				builder.append(' ');
@@ -218,7 +232,7 @@ public class GoReply {
 			}
 			builder.append("hashfull ").append(info.hashFull);
 		}
-		List<UCIMove> pv = info.pvBuilder.apply(move);
+		List<UCIMove> pv = info.getPv(move);
 		if (pv.isEmpty()) {
 			pv = Collections.singletonList(move);
 		}
