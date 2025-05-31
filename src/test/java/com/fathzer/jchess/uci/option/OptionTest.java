@@ -8,6 +8,7 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
@@ -109,5 +110,22 @@ class OptionTest {
 		assertThrows(IllegalArgumentException.class, () -> new IntegerSpinOption(name, x->{}, 2, 4, 0));
 		assertThrows(IllegalArgumentException.class, () -> s.setValue(null));
 		assertThrows(IllegalArgumentException.class, () -> s.setValue("8"));
+
+		final AtomicLong aLong = new AtomicLong();
+		LongSpinOption ls = new LongSpinOption(name, aLong::set, defaultValue, -1824L, 25842L);
+		assertEquals(defaultValue, aLong.get());
+		assertEquals(defaultValue, ls.getValue());
+		final long longValue = -1824;
+		ls.setValue(Long.toString(longValue));
+		assertEquals(longValue, aLong.get());
+		assertEquals(longValue, ls.getValue());
+		assertEquals("option name "+name+" type spin default "+defaultValue+" min -1824 max 25842",ls.toUCI());
+		assertThrows(IllegalArgumentException.class, () -> new LongSpinOption(null, x->{}, defaultValue, 1824L, 25842L));
+		assertThrows(IllegalArgumentException.class, () -> new LongSpinOption(name, null, defaultValue, 1824L, 25842L));
+		assertThrows(IllegalArgumentException.class, () -> new LongSpinOption(name, x->{}, -1L, 1824L, 25842L));
+		assertThrows(IllegalArgumentException.class, () -> new LongSpinOption(name, x->{}, 2L, 25842L, 1824L));
+		assertThrows(IllegalArgumentException.class, () -> ls.setValue(null));
+		assertThrows(IllegalArgumentException.class, () -> ls.setValue("-1825"));
+		assertThrows(IllegalArgumentException.class, () -> ls.setValue("25843"));
 	}
 }
