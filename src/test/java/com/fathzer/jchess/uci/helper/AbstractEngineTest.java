@@ -29,8 +29,9 @@ import com.fathzer.games.ai.time.TimeManager;
 import com.fathzer.games.ai.transposition.TranspositionTable;
 import com.fathzer.games.clock.CountDownState;
 import com.fathzer.jchess.uci.GoReply;
-import com.fathzer.jchess.uci.GoReply.CpScore;
 import com.fathzer.jchess.uci.GoReply.Info;
+import com.fathzer.jchess.uci.GoReply.CpScore;
+import com.fathzer.jchess.uci.GoReply.MateScore;
 import com.fathzer.jchess.uci.StoppableTask;
 import com.fathzer.jchess.uci.UCIMove;
 import com.fathzer.jchess.uci.UsualOptions;
@@ -165,7 +166,7 @@ class AbstractEngineTest {
 		when(tt.getSize()).thenReturn(64);
 		when(tt.collectPV(any(), any(), anyInt())).thenReturn(List.of("a1a2", "b1b2"));
 		final DeepeningPolicy deepeningPolicy = new DeepeningPolicy(2);
-		deepeningPolicy.setSize(2);
+		deepeningPolicy.setSize(3);
 		IterativeDeepeningEngine<String, MoveGenerator<String>> engine = new IterativeDeepeningEngine<>(deepeningPolicy, tt, null) {
 			@Override
 			public SearchHistory<String> getBestMoves(MoveGenerator<String> board, List<String> searchedMoves) {
@@ -173,11 +174,13 @@ class AbstractEngineTest {
 				final EvaluatedMove<String> mv1d1 = new EvaluatedMove<>("e2e4", Evaluation.score(4000));
 				final EvaluatedMove<String> mv2d1 = new EvaluatedMove<>("e2e5", Evaluation.score(3000));
 				final EvaluatedMove<String> mv3d1 = new EvaluatedMove<>("d2d4", Evaluation.score(0));
-				history.add(List.of(mv1d1, mv2d1, mv3d1), 1);
+				final EvaluatedMove<String> mv4d1 = new EvaluatedMove<>("d2d3", Evaluation.score(0));
+				history.add(List.of(mv1d1, mv2d1, mv3d1, mv4d1), 1);
 				final EvaluatedMove<String> mv1d2 = new EvaluatedMove<>("e2e4", Evaluation.score(4000));
-				final EvaluatedMove<String> mv2d2 = new EvaluatedMove<>("e2e5", Evaluation.score(5000));
-				final EvaluatedMove<String> mv3d2 = new EvaluatedMove<>("d2d4", Evaluation.score(0));
-				history.add(List.of(mv2d2, mv1d2, mv3d2), 2);
+				final EvaluatedMove<String> mv2d2 = new EvaluatedMove<>("e2e5", Evaluation.win(3,17800));
+				final EvaluatedMove<String> mv3d2 = new EvaluatedMove<>("d2d4", Evaluation.loose(3,-17800));
+				final EvaluatedMove<String> mv4d2 = new EvaluatedMove<>("d2d3", Evaluation.loose(2,-17900));
+				history.add(List.of(mv2d2, mv1d2, mv3d2, mv4d2), 2);
 				return history;
 			}
 
@@ -189,7 +192,6 @@ class AbstractEngineTest {
 		ae.board = board;
 		
 		GoParameters params = new GoParameters();
-		GoParameters.PARSER.parse(params, new LinkedList<>(Arrays.asList(("multipv 2").split(" "))));
 		StoppableTask<GoReply> task = ae.go(params);
 		final GoReply reply = task.call();
 
@@ -198,9 +200,10 @@ class AbstractEngineTest {
 		final Info info = reply.getInfo().get();
 		assertEquals(2, info.getDepth());
 		assertEquals(500, info.getHashFull());
-		assertEquals(List.of("e2e4"), info.getExtraMoves().stream().map(UCIMove::toString).toList());
-		assertEquals(new CpScore(5000), info.getScore(best).get());
+		assertEquals(List.of("e2e4","d2d4"), info.getExtraMoves().stream().map(UCIMove::toString).toList());
+		assertEquals(new MateScore(3), info.getScore(best).get());
 		assertEquals(new CpScore(4000), info.getScore(info.getExtraMoves().get(0)).get());
+		assertEquals(new MateScore(-3), info.getScore(info.getExtraMoves().get(1)).get());
 		assertEquals(List.of("a1a2", "b1b2"), info.getPv(best).stream().map(UCIMove::toString).toList());
 	}
 	

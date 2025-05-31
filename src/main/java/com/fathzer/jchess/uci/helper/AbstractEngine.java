@@ -127,7 +127,7 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 	public Map<String, Option<?>> getOptions() {
 		final Map<String, Option<?>> options = Engine.super.getOptions();
 		if (!evaluatorBuilders.isEmpty()) {
-			add(options, new ComboOption("evaluation", this::setEvaluator, defaultEvaluator, evaluatorBuilders.keySet()));
+			add(options, new ComboOption("evaluation", n->engine.setEvaluatorSupplier(evaluatorBuilders.get(n)), defaultEvaluator, evaluatorBuilders.keySet()));
 		}
 		add(options, UsualOptions.threads(this.engine::setParallelism, defaultThreads));
 		add(options, UsualOptions.multiPV(this.engine.getDeepeningPolicy()::setSize));
@@ -138,14 +138,6 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 	
 	private void add(Map<String, Option<?>> map, Option<?> option) {
 		map.put(option.getName(), option);
-	}
-	
-	private void setEvaluator(String evaluatorName) {
-		final Supplier<Evaluator<M, B>> builder = evaluatorBuilders.get(evaluatorName);
-		if (builder==null) {
-			throw new IllegalArgumentException();
-		}
-		engine.setEvaluatorSupplier(builder);
 	}
 
 	/** Converts an UCI move to an internal move.
@@ -215,12 +207,11 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 	}
 	
 	private Optional<Score> toScore(Evaluation evaluation) {
+		final Score score;
 		final Type type = evaluation.getType();
 		if (type==Type.UNKNOWN) {
-			return Optional.empty();
-		}
-		final Score score;
-		if (type==Type.EVAL) {
+			score =null;
+		} else if (type==Type.EVAL) {
 			score = new CpScore(evaluation.getScore());
 		} else if (type==Type.WIN) {
 			score = new MateScore(evaluation.getCountToEnd());
@@ -229,7 +220,7 @@ public abstract class AbstractEngine<M, B extends MoveGenerator<M>> implements E
 		} else {
 			throw new IllegalArgumentException("Type "+type+" is not supported");
 		}
-		return Optional.of(score); 
+		return Optional.ofNullable(score); 
 	}
 	
 	/** 
