@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.EOFException;
 import java.io.UncheckedIOException;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -12,9 +13,14 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.fathzer.games.perft.PerfTTestData;
 import com.fathzer.games.util.UncheckedException;
 
 import com.fathzer.jchess.uci.Engine;
@@ -22,6 +28,7 @@ import com.fathzer.jchess.uci.ThrowingRunnable;
 import com.fathzer.jchess.uci.extended.ExtendedUCI;
 
 public class InstrumentedUCI extends ExtendedUCI {
+	private static final Logger LOGGER = LoggerFactory.getLogger(InstrumentedUCI.class);
 	private static final int TIME_OU_MS = 1000;
 
 	public static class UnknownCommandException extends RuntimeException {
@@ -45,13 +52,17 @@ public class InstrumentedUCI extends ExtendedUCI {
 	private final List<String> output;
 	private final Map<String, Throwable> exceptions;
 	private final AtomicBoolean backgroundRunning = new AtomicBoolean();
+	private final AtomicBoolean backgroundStarted = new AtomicBoolean();
+	private final AtomicReference<String> lastCommandCompleted = new AtomicReference<>();
 	private final Supplier<String> in;
+	private Collection<PerfTTestData> testData;
 	
 	public InstrumentedUCI(Engine defaultEngine) {
 		super(defaultEngine);
 		input = new LinkedBlockingQueue<String>();
 		output = Collections.synchronizedList(new LinkedList<String>());
 		this.exceptions = new ConcurrentHashMap<>();
+		testData = Collections.emptyList();
 		in = () -> {
 			try {
 				return input.take();
@@ -81,6 +92,7 @@ public class InstrumentedUCI extends ExtendedUCI {
 	protected boolean doCommand(String command) {
 		boolean known;
 		try {
+			if (!"q".equals(command) && !"debug on".equals(command)) LOGGER.debug("doCommand computes {}", command);
 			known = super.doCommand(command);
 			if (!known) {
 				exceptions.put(command, new UnknownCommandException(command));
@@ -90,16 +102,33 @@ public class InstrumentedUCI extends ExtendedUCI {
 			exceptions.put(command, e);
 		}
 		synchronized(this) {
-			notifyAll();
+			if (!"q".equals(command) && !"debug on".equals(command)) LOGGER.debug("doCommand notifies threads waiting for {} to complete", command);
+			lastCommandCompleted.set(command);
+			this.notifyAll();
 		}
 		return known;
 	}
+
+	private static class TimeoutException extends RuntimeException {
+		private static final long serialVersionUID = 1L;
+
+		TimeoutException(String message) {
+			super(message);
+		}
+	}
 	
 	public boolean post(String command) {
+		if (!"q".equals(command) && !"debug on".equals(command)) LOGGER.debug("{} posted", command);
+		lastCommandCompleted.set(null);
 		input.add(command);
 		try {
 			synchronized (this) {
-				wait(TIME_OU_MS);
+				if (!"q".equals(command) && !"debug on".equals(command)) LOGGER.debug("post is waiting for {} to complete", command);
+				this.wait(TIME_OU_MS);
+				while (!command.equals(lastCommandCompleted.get())) {
+					throw new TimeoutException("Timeout after " + TIME_OU_MS + "ms waiting for " + command + " to complete");
+				}
+				if (!"q".equals(command) && !"debug on".equals(command)) LOGGER.debug("post received completion notification for {}", command);
 				if (exceptions.get(command) instanceof UnknownCommandException) {
 					exceptions.remove(command);
 						return false;
@@ -114,6 +143,7 @@ public class InstrumentedUCI extends ExtendedUCI {
 	
 	public void clear() {
 		backgroundRunning.set(false);
+		backgroundStarted.set(false);
 		output.clear();
 		exceptions.clear();
 	}
@@ -129,6 +159,7 @@ public class InstrumentedUCI extends ExtendedUCI {
 	@Override
 	public boolean doBackground(ThrowingRunnable task, Runnable stopper, Consumer<Exception> logger) {
 		backgroundRunning.set(true);
+		backgroundStarted.set(true);
 		ThrowingRunnable internalTask = () -> {
 			try {
 				task.run();
@@ -142,7 +173,19 @@ public class InstrumentedUCI extends ExtendedUCI {
 	public boolean isBackgroundRunning() {
 		return backgroundRunning.get();
 	}
-	
+
+	public boolean isBackgroundCompleted() {
+		return backgroundStarted.get() && !backgroundRunning.get();
+	}
+
+	public void setTestData(Collection<PerfTTestData> testData) {
+		this.testData = testData;
+	}
+	@Override
+	protected Collection<PerfTTestData> readTestData() {
+		return testData;
+	}
+
 	public void assertDebug(String string) {
 		assertTrue(isDebug(string), "expected \""+string+"\" started with \"info string \"");
 	}

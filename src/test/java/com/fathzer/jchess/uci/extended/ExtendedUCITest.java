@@ -1,6 +1,7 @@
 package com.fathzer.jchess.uci.extended;
 
 import static org.junit.jupiter.api.Assertions.*;
+
 import static org.mockito.Mockito.*;
 import static org.awaitility.Awaitility.*;
 
@@ -13,6 +14,8 @@ import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
 
 import com.fathzer.games.MoveGenerator;
+import com.fathzer.games.perft.FromPositionMoveGeneratorBuilder;
+import com.fathzer.games.perft.PerfTTestData;
 import com.fathzer.jchess.uci.Engine;
 import com.fathzer.jchess.uci.util.InstrumentedUCI;
 
@@ -102,7 +105,7 @@ class ExtendedUCITest {
 
 			// Test with everything fine
 			uci.post("perft 2");
-			await().atMost(Duration.ofSeconds(1)).until(() -> !uci.isBackgroundRunning());
+			await().atMost(Duration.ofSeconds(1)).until(uci::isBackgroundCompleted);
 			assertEquals(Map.of(), uci.getExceptions());
 			final String pseudo = uci.out().remove(uci.out().size()-1);
 			assertTrue(pseudo.startsWith("perft 6"), "Perft pseudo-legal generated moves not starting with perft 6: "+pseudo);
@@ -117,6 +120,35 @@ class ExtendedUCITest {
 			uci.post("perft 2");
 			assertFalse(uci.out().isEmpty());
 			uci.assertDebug();
+		});
+	}
+
+	@Test
+	void testPerfStat() {
+		// Test with engine that does not implement FromPositionMoveGeneratorBuilder
+		Engine engine = mock(Engine.class);
+		exec(engine, uci -> {
+			uci.post("test");
+			assertFalse(uci.out().isEmpty());
+			uci.assertDebug();
+		});
+		
+		// Test with engine that implements FromPositionMoveGeneratorBuilder
+		engine = mock(Engine.class, withSettings().extraInterfaces(FromPositionMoveGeneratorBuilder.class));
+		exec(engine, uci -> {
+			// No data available
+			uci.post("test 4");
+			assertFalse(uci.out().isEmpty());
+			uci.assertDebug(uci.out().get(uci.out().size()-1));
+			uci.clear();
+
+			// Data available, but Perft throws an exception (the board is null)
+			PerfTTestData perfTTestData = new PerfTTestData("startpos", "x");
+			perfTTestData.add(2);
+			uci.setTestData(Arrays.asList(perfTTestData));
+			uci.post("test 1");
+			await().atMost(Duration.ofSeconds(1)).until(uci::isBackgroundCompleted);
+			assertTrue(uci.getExceptions().containsKey("test"));
 		});
 	}
 }

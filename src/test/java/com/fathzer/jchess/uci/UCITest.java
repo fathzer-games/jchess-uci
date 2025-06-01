@@ -378,7 +378,7 @@ class UCITest {
 		uci.clear();
 		task.clear();
 		uci.post("go xtime acx");
-		await().atMost(timeout).until(()->!uci.isBackgroundRunning());
+		await().atMost(timeout).until(uci::isBackgroundCompleted);
 		assertTrue(uci.getExceptions().isEmpty());
 		// Something is in debug output
 		uci.assertDebug(uci.out().get(0));
@@ -439,7 +439,7 @@ class UCITest {
 		info.setExtraMoves(Arrays.asList(UCIMove.from("d2d4"), UCIMove.from("b1c3")));
 
 		uci.post("go movetime 100");
-		await().atMost(timeout).until(()->!uci.isBackgroundRunning());
+		await().atMost(timeout).until(uci::isBackgroundCompleted);
 		assertEquals(100, task.arg.getTimeOptions().getMoveTimeMs());
 		assertTrue(uci.getExceptions().isEmpty());
 		List<String> out = uci.out();
@@ -467,7 +467,7 @@ class UCITest {
 		    });
 		uci.post("go");
 		Duration timeout = DurationFactory.of(1, TimeUnit.SECONDS);
-		await().atMost(timeout).until(()->!uci.isBackgroundRunning());
+		await().atMost(timeout).until(uci::isBackgroundCompleted);
 		assertEquals(IllegalArgumentException.class, uci.getExceptions().get("go").getClass());
 		assertTrue(uci.out().isEmpty());
 	}

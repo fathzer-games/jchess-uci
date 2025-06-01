@@ -1,7 +1,7 @@
 package com.fathzer.jchess.uci.parameters;
 
 /** The parameters of the <i>test</i> UCI command.
- * <br>Parameters are a subset of the <i>perft</i> command ones (see {@link PerfTParameters}).
+ * <br>Parameters are a superset of the <i>perft</i> command ones (see {@link PerfTParameters}).
  * <br>Additional parameters:
  * <ul>
  * <li><b>cut</b>: The maximum time (in seconds) to spend on the test. By default there is no time limit</li>
