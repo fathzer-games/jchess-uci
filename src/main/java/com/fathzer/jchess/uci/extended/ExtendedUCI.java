@@ -36,7 +36,6 @@ import com.fathzer.jchess.uci.parameters.PerfTParameters;
  * </ul>
  */
  public class ExtendedUCI extends UCI {
-	//TODO Warning not sure of what <b>block</b> command does. It should be documented later.
 	private static final String PERFT_COMMAND = "perft";
 	private static final String TEST_COMMAND = "test";
 	
@@ -50,7 +49,6 @@ import com.fathzer.jchess.uci.parameters.PerfTParameters;
 		addCommand(this::doPerft, PERFT_COMMAND);
 		addCommand(this::doPerfStat,TEST_COMMAND);
 		addCommand(this::doDisplay, "d");
-		addCommand(this::wait, "block");
 	}
 	
 	/** Performs the display command (<b>d</b>).
@@ -178,20 +176,5 @@ import com.fathzer.jchess.uci.parameters.PerfTParameters;
 
 	private static String f(long num) {
 		return NumberFormat.getInstance().format(num);
-	}
-	
-	private void wait(Deque<String> args) {
-		while (true) {
-			if (doBackground(()->{}, ()->{}, e ->{})) {
-				return;
-			}
-			try {
-				synchronized (this) {
-					wait(100);
-				}
-			} catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-			}
-		}
 	}
 }
