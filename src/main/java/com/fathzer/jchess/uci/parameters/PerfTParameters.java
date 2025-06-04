@@ -19,7 +19,9 @@ public class PerfTParameters {
 	/** A {@link Parser} for the <i>perft</i> command. */
 	public static final Parser<PerfTParameters> PARSER = new PerfTLikeParser<>();
 	
+	/** A {@link Parser} for the <i>perft</i> command. */
 	public static class PerfTLikeParser<T extends PerfTParameters> extends Parser<T> {
+		/** Constructor */
 		protected PerfTLikeParser() {
 			super(Collections.emptyList());
 			add(new ParameterDefinition<>((p,tok) -> p.setParallelism(Parser.positiveInt(tok)), "threads", "t"));

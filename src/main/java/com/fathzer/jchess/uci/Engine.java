@@ -101,8 +101,8 @@ public interface Engine {
 	 * <br>The default implementation throws an exception.
 	 * <br>You should override this method if {@link #getDefaultHashTableSize()} is.
 	 * @param sizeInMB The size of the hash table in MBytes 
-	 * @Throws UnsupportedOperationException if {@link #getDefaultHashTableSize()} returns a negative number.
-	 * @Throws IllegalStateException if {@link #getDefaultHashTableSize()} returns a number &gt;=0.
+	 * @throws UnsupportedOperationException if {@link #getDefaultHashTableSize()} returns a negative number.
+	 * @throws IllegalStateException if {@link #getDefaultHashTableSize()} returns a number &gt;=0.
 	 */
 	default void setHashTableSize(int sizeInMB) {
 		throw getDefaultHashTableSize()<0 ? new UnsupportedOperationException() : new IllegalStateException();
@@ -111,8 +111,8 @@ public interface Engine {
 	/** Clears the hash table.
 	 * <br>The default implementation throws an exception.
 	 * <br>You should override this method if you override {@link #getDefaultHashTableSize()} is.
-	 * @Throws UnsupportedOperationException if {@link #getDefaultHashTableSize()} returns a negative number.
-	 * @Throws IllegalStateException if {@link #getDefaultHashTableSize()} returns a number &gt;=0.
+	 * @throws UnsupportedOperationException if {@link #getDefaultHashTableSize()} returns a negative number.
+	 * @throws IllegalStateException if {@link #getDefaultHashTableSize()} returns a number &gt;=0.
 	 */
 	default void clearHashTable() {
 		throw getDefaultHashTableSize()<0 ? new UnsupportedOperationException() : new IllegalStateException();
@@ -129,8 +129,8 @@ public interface Engine {
 	/** Switches the <a href="https://en.wikipedia.org/wiki/Fischer_random_chess">Chess960</a> mode.
 	 * <br>The default implementation throws an exception 
 	 * @param chess960Mode true to start playing with chess 960 rules.
-	 * @Throws UnsupportedOperationException if chess 960 is not supported.
-	 * @Throws IllegalStateException if chess 960 is supported.
+	 * @throws UnsupportedOperationException if chess 960 is not supported.
+	 * @throws IllegalStateException if chess 960 is supported.
 	 */
 	default void setChess960(boolean chess960Mode) {
 		throw isChess960Supported() ? new IllegalStateException() : new UnsupportedOperationException();
@@ -148,8 +148,8 @@ public interface Engine {
 	/** Ask the engine to use its own opening book or not. 
 	 * <br>The default implementation throws an exception 
 	 * @param activate true to activate the opening book. False to deactivate it.
-	 * @Throws UnsupportedOperationException if engine has not its own book.
-	 * @Throws IllegalStateException if engine has its own book.
+	 * @throws UnsupportedOperationException if engine has not its own book.
+	 * @throws IllegalStateException if engine has its own book.
 	 */
 	default void setOwnBook(boolean activate) {
 		throw hasOwnBook() ? new IllegalStateException() : new UnsupportedOperationException();

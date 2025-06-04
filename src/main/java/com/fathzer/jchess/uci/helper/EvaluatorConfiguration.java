@@ -13,17 +13,7 @@ import com.fathzer.games.ai.evaluation.Evaluator;
  * @param name The name of the evaluator
  * @param evaluatorBuilder A supplier that can create an evaluator
  */
-public record EvaluatorConfiguration<M, B extends MoveGenerator<M>> (
-    /**
-     * @return The name of the evaluator
-     */
-    String name,
-    
-    /**
-     * @return A supplier that can create an evaluator
-     */
-    Supplier<Evaluator<M, B>> evaluatorBuilder
-) {
+public record EvaluatorConfiguration<M, B extends MoveGenerator<M>> (String name, Supplier<Evaluator<M, B>> evaluatorBuilder) {
     /**
      * @throws IllegalArgumentException If the name or the evaluator builder is null
      */
