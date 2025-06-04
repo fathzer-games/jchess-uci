@@ -1,134 +1,170 @@
 package com.fathzer.jchess.uci;
 
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
-import java.text.NumberFormat;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import com.fathzer.games.perft.TestableMoveGeneratorSupplier;
-import com.fathzer.games.perft.MoveGeneratorChecker;
-import com.fathzer.games.perft.PerfTResult;
-import com.fathzer.games.perft.PerfTTestData;
-import com.fathzer.jchess.uci.option.CheckOption;
+import com.fathzer.jchess.uci.BackgroundTaskManager.Task;
+import com.fathzer.jchess.uci.GoReply.Info;
 import com.fathzer.jchess.uci.option.Option;
+import com.fathzer.jchess.uci.parameters.GoParameters;
+import com.fathzer.jchess.uci.parameters.Parser;
 
 /** A class that implements a subset of the <a href="http://wbec-ridderkerk.nl/html/UCIProtocol.html">UCI protocol</a>.
  * <br>It does not support all UCI commands and contains some extensions. Please have a look at the project's <a href="https://github.com/fathzer-games/jchess-uci/">README</a> file.
  * @see Engine
  */
-public class UCI implements Runnable {
-	private static final BufferedReader IN = new BufferedReader(new InputStreamReader(System.in));
+public class UCI implements Runnable, AutoCloseable {
+	/** If the file whose path is in this system property exists, the commands it contains will be executed when the engine is started. */
+	public static final String INIT_COMMANDS_PROPERTY_FILE = "uciInitCommands";
+
 	private static final String MOVES = "moves";
 	private static final String ENGINE_CMD = "engine";
+	private static final String GO_CMD = "go";
 	private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.nnnnnnnn");
 	
-	private Engine engine;
-	private final Map<String, Consumer<String[]>> executors = new HashMap<>();
+	private Supplier<String> in;
+
+	/** The current engine. */
+	protected Engine engine;
+
+	private final Map<String, Consumer<Deque<String>>> executors = new HashMap<>();
 	private final Map<String, Engine> engines = new HashMap<>();
-	
-	private final BackgroundTaskManager backTasks = new BackgroundTaskManager(e -> out(e, 0));
-	private final Option<Boolean> chess960Option = new CheckOption("UCI_Chess960", b -> {if (engine!=null) engine.setChess960(b);}, false);
+
+	private final BackgroundTaskManager backTasks = new BackgroundTaskManager();
 	private boolean debug = Boolean.getBoolean("logToFile");
 	private boolean debugUCI = Boolean.getBoolean("debugUCI");
 	private Map<String, Option<?>> options;
 	
+	private boolean isPositionSet;
+	private boolean isRunning;
+	
+	/** Creates a new instance.
+	 * @param defaultEngine The default engine to use.
+	 */
 	public UCI(Engine defaultEngine) {
 		engines.put(defaultEngine.getId(), defaultEngine);
 		this.engine = defaultEngine;
-		buildOptionsTable(defaultEngine.getOptions());
 		addCommand(this::doUCI, "uci");
 		addCommand(this::doDebug, "debug");
 		addCommand(this::doSetOption, "setoption");
 		addCommand(this::doIsReady, "isready");
 		addCommand(this::doNewGame, "ucinewgame", "ng");
 		addCommand(this::doPosition, "position");
-		addCommand(this::doGo, "go");
+		addCommand(this::doGo, GO_CMD);
 		addCommand(this::doStop, "stop");
-		addCommand(this::doDisplay, "d");
-		addCommand(this::doPerft, "perft");
 		addCommand(this::doEngine,ENGINE_CMD);
-		addCommand(this::doPerfStat,"test");
-		if (System.console()!=null) {
-			log(false, "Input from System.console()");
-		} else {
-			log(false, "Input from System.in");
-		}
+		addCommand(this::doQuit, "quit", "q");
 	}
 	
+	/** Adds a new engine.
+	 * @param engine The engine to add.
+	 * @throws IllegalArgumentException If there's already an engine with the same id.
+	 * @see #doEngine(Deque)
+	 */
 	public void add(Engine engine) {
-		if (engines.containsKey(engine.getId())) {
-			throw new IllegalArgumentException("There's already an engine with id "+engine.getId());
+		final String id = engine.getId();
+		if (id==null || id.isBlank()) {
+			throw new IllegalArgumentException("Engine can't have a null or blank id");
 		}
-		engines.put(engine.getId(), engine);
-	}
-
-	protected void addCommand(Consumer<String[]> method, String... commands) {
-		Arrays.stream(commands).forEach(c -> executors.put(c, method));
+		if (engines.containsKey(id)) {
+			throw new IllegalArgumentException("There's already an engine with id "+id);
+		}
+		engines.put(id, engine);
 	}
 	
-	protected void doDebug(String[] tokens) {
-		if (tokens.length==1) {
-			if ("on".equals(tokens[0])) {
+	/**
+	 * Removes an engine.
+	 * @param id The id of the engine to remove.
+	 * @return The removed engine, or null if no engine with the given id was found.
+	 * @throws IllegalStateException If id is the current engine's id.
+	 */
+	public Engine removeEngine(String id) {
+		if (id.equals(engine.getId())) {
+			throw new IllegalStateException("Can't remove current engine");
+		} 
+		return engines.remove(id);
+	}
+	
+	/** Adds a new command.
+	 * <br>If command or an alias is already registered, it will be replaced by the provided one.
+	 * @param method The method to invoke when the command is received.
+	 * @param command The command that will invoke the method.
+	 * @param aliases The aliases of the command.
+	 * @throws IllegalArgumentException If the method is null or if command or any alias is null or blank.
+	 */
+	protected void addCommand(Consumer<Deque<String>> method, String command, String... aliases) {
+		if (command==null || command.isBlank() || method==null) {
+			throw new IllegalArgumentException();
+		}
+		if (Arrays.stream(aliases).anyMatch(c -> c==null || c.isBlank())) {
+			throw new IllegalArgumentException();
+		}
+		executors.put(command, method);
+		Arrays.stream(aliases).forEach(c -> executors.put(c, method));
+	}
+	
+	/** Executes the debug command.
+	 * @param tokens The tokens of the command.
+	 */
+	protected void doDebug(Deque<String> tokens) {
+		if (tokens.size()==1) {
+			String arg = tokens.pop();
+			if ("on".equals(arg)) {
 				debugUCI = true;
-			} else if ("off".equals(tokens[0])) {
+			} else if ("off".equals(arg)) {
 				debugUCI = false;
 			} else {
-				debug("Wrong argument "+tokens[0]);
+				debug("Wrong argument "+arg);
 			}
 		} else {
 			debug("Expected 1 argument to this command");
 		}
 	}
 
-	protected void doUCI(String[] tokens) {
+	/** Executes the uci command.
+	 * @param tokens The tokens of the command.
+	 */
+	protected void doUCI(Deque<String> tokens) {
 		out("id name "+engine.getId());
 		final String author = engine.getAuthor();
 		if (author!=null) {
 			out("id author "+author);
 		}
-		boolean hasChess960 = false;
-		for (Option<?> option : options.values()) {
-			if (chess960Option.getName().equals(option.getName())) {
-				hasChess960 = true;
-			}
-			out(option.toUCI());
-		}
-		if (engine.isChess960Supported() && !hasChess960) {
-			out(chess960Option.toUCI());
-		}
+		getOptions().values().forEach( o -> out(o.toUCI()));
 		out("uciok");
 	}
 	
-	private String processOption(String[] tokens) {
-		if (tokens.length<2) {
+	private String processOption(Deque<String> tokens) {
+		if (tokens.size()<2) {
 			return "Missing name prefix or option name";
 		}
-		if (!"name".equals(tokens[0])) {
+		if (!"name".equals(tokens.peek())) {
 			return "setoption command should start with name";
 		}
 		// Be aware that option name can be contained by more than 1 token
-		final String name = Arrays.stream(tokens).skip(1).takeWhile(t->!"value".equals(t)).collect(Collectors.joining(" "));
-		final String value = Arrays.stream(tokens).dropWhile(t->!"value".equals(t)).skip(1).collect(Collectors.joining(" "));
+		final String name = tokens.stream().skip(1).takeWhile(t->!"value".equals(t)).collect(Collectors.joining(" "));
+		final String value = tokens.stream().dropWhile(t->!"value".equals(t)).skip(1).collect(Collectors.joining(" "));
 		if (name.isEmpty()) {
 			return "Option name is empty";
 		}
-		final Option<?> option = options.get(name);
+		final Option<?> option = getOptions().get(name);
 		if (option==null) {
 			return "Unknown option";
 		}
@@ -139,251 +175,259 @@ public class UCI implements Runnable {
 			return "Value "+value+" is illegal";
 		}
 	}
-	
-	protected void doSetOption(String[] tokens) {
+
+	/** Executes the setoption command.
+	 * @param tokens The tokens of the command.
+	 */
+	protected void doSetOption(Deque<String> tokens) {
 		final String error = processOption(tokens);
 		if (error!=null) {
 			debug(error);
 		}
 	}
 	
-	protected void doIsReady(String[] tokens) {
+	/** Executes the isready command.
+	 * @param tokens The tokens of the command.
+	 */
+	protected void doIsReady(Deque<String> tokens) {
 		out("readyok");
 	}
 
-	protected void doNewGame(String[] tokens) {
-		getEngine().newGame();
+	/** Executes the newgame command.
+	 * @param tokens The tokens of the command.
+	 */
+	protected void doNewGame(Deque<String> tokens) {
+		engine.newGame();
+		isPositionSet = false;
 	}
 
-	protected void doPosition(String[] tokens) {
+	/** Executes the position command.
+ * @param tokens The tokens of the command.
+	 */
+	protected void doPosition(Deque<String> tokens) {
+		if (tokens.isEmpty()) {
+			debug("missing position definition");
+			return;
+		}
+		final String first = tokens.pop();
 		final String fen;
-		if ("fen".equals(tokens[0])) {
-			fen = getFEN(Arrays.copyOfRange(tokens, 1, tokens.length));
-		} else if ("startpos".equals(tokens[0])) {
+		if ("fen".equals(first)) {
+			fen = getFEN(tokens);
+		} else if ("startpos".equals(first)) {
 			fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 		} else {
 			debug("invalid position definition");
 			return;
 		}
 		log("Setting board to FEN",fen);
-		getEngine().setStartPosition(fen);
-		Arrays.stream(tokens).dropWhile(t->!MOVES.equals(t)).skip(1).forEach(this::doMove);
+		try {
+			engine.setStartPosition(fen);
+			tokens.stream().dropWhile(t->!MOVES.equals(t)).skip(1).forEach(this::doMove);
+			isPositionSet = true;
+		} catch (IllegalArgumentException e) {
+			debug("invalid position definition");
+		}
 	}
 	
 	private void doMove(String move) {
 		log("Moving",move);
-		getEngine().move(UCIMove.from(move));
-	}
-	
-	private String getFEN(String[] tokens) {
-		return Arrays.stream(tokens).takeWhile(t -> !MOVES.equals(t)).collect(Collectors.joining(" "));
-	}
-	
-	protected void doBackground(Runnable task, Runnable stopper) {
-		if (!backTasks.doBackground(task, stopper)) {
-			debug("Engine is already working");
-		}
-	}
-
-	protected void doGo(String[] tokens) {
-		if (engine.getFEN()==null) {
-			debug("No position defined");
-		} else {
-			final Optional<GoOptions> goOptions = getParams(Arrays.asList(tokens));
-			if (goOptions.isPresent()) {
-				final LongRunningTask<BestMoveReply> task = engine.go(goOptions.get());
-				doBackground(() -> {
-					final BestMoveReply reply = task.get();
-					out("bestmove "+reply.getMove()+(reply.getPonderMove().isEmpty()?"":(" "+reply.getPonderMove().get())));
-				}, task::stop);
-			}
-		}
-	}
-	private Optional<GoOptions> getParams(List<String> tokens) {
 		try {
-			final GoOptions result = new GoOptions(tokens);
-			debug("The following go options were ignored "+result.getIgnoredOptions());
-			return Optional.of(result);
+			engine.move(UCIMove.from(move));
 		} catch (IllegalArgumentException e) {
-			debug("There's illegal argument in the go options "+tokens);
-			return Optional.empty();
+			debug("invalid move "+move);
 		}
 	}
 	
-	protected void doStop(String[] tokens) {
-		if (!backTasks.stop()) {
-			debug("Nothing to stop");
-		}
+	private String getFEN(Collection<String> tokens) {
+		return tokens.stream().takeWhile(t -> !MOVES.equals(t)).collect(Collectors.joining(" "));
 	}
 	
-	protected void doDisplay(String[] tokens) {
-		if (tokens.length==0) {
-			out(getEngine().getBoardAsString());
-		} else if (tokens.length==1 && "fen".equals(tokens[0])) {
-			out(getEngine().getFEN());
-		} else {
-			debug("Unknown display options "+Arrays.asList(tokens));
-		}
+	/** Launches a task on the background thread.
+	 * @param task The task to launch
+	 * @param stopper A runnable that stops the task when invoked (it is user by the <i>stop</i> command in order to stop the task.
+	 * @param logger Where to send the exceptions 
+	 * @return true if the task is launched, false if another task is already running.
+	 */
+	protected boolean doBackground(ThrowingRunnable task, Runnable stopper, Consumer<Exception> logger) {
+		return backTasks.doBackground(new Task(task, stopper, logger));
 	}
-	
-	protected <M> void doPerft(String[] tokens) {
-		if (engine.getFEN()==null) {
+
+	/** Executes the go command.
+	 * @param tokens The tokens of the command.
+	 */
+	protected void doGo(Deque<String> tokens) {
+		if (!isPositionSet()) {
 			debug("No position defined");
-			return;
-		}
-		if (! (engine instanceof MoveGeneratorSupplier)) {
-			debug("perft is not supported by this engine");
-			return;
-		}
-		Optional<List<Integer>> params = new ParamsParser<>(this::debug, Integer::parseInt, (i,v) -> v>0).parse(tokens, Arrays.asList("search depth", "number of threads"), Arrays.asList(null, 1));
-		if (params.isEmpty()) {
-			return;
-		}
-		final int depth = params.get().get(0);
-		final int parallelism = params.get().get(1);
-		@SuppressWarnings("unchecked")
-		final LongRunningTask<PerfTResult<M>> task = new PerftTask<>((MoveGeneratorSupplier<M>)engine, depth, parallelism);
-		doBackground(() -> doPerft(task, parallelism), task::stop);
-	}
-
-	private <M> void doPerft(LongRunningTask<PerfTResult<M>> task, int parallelism) {
-		final long start = System.currentTimeMillis(); 
-		final PerfTResult<M> result = task.get();
-
-		final long duration = System.currentTimeMillis() - start;
-		if (result.isInterrupted()) {
-			out("perft process has been interrupted");
 		} else {
-			result.getDivides().stream().forEach(d -> out (toString(d.getMove())+": "+d.getCount()));
-			final long sum = result.getNbLeaves();
-			out("perft "+f(sum)+" leaves in "+f(duration)+"ms ("+f(sum*1000/duration)+" leaves/s) (using "+parallelism+" thread(s))");
-			out("perft "+f(result.getNbMovesFound())+" moves generated ("+f(result.getNbMovesFound()*1000/duration)+" mv/s). " + 
-				f(result.getNbMovesMade())+" moves made ("+f(result.getNbMovesMade()*1000/duration)+" mv/s)");
-		}
-	}
-	
-	private <M> String toString(M move) {
-		return (getEngine() instanceof MoveToUCIConverter) ? ((MoveToUCIConverter<M>)engine).toUCI(move) : move.toString();
-	}
-	
-	protected void doPerfStat(String[] tokens) {
-		if (! (getEngine() instanceof TestableMoveGeneratorSupplier)) {
-			debug("test is not supported by this engine");
-		}
-		final Optional<List<Integer>> params = new ParamsParser<>(this::debug, Integer::parseInt, (i,v)->v>0).parse(tokens, Arrays.asList("search depth", "number of threads", "cut time"), Arrays.asList(null,1,Integer.MAX_VALUE));
-		if (params.isEmpty()) {
-			return;
-		}
-		final Collection<PerfTTestData> testData = readTestData();
-		if (testData.isEmpty()) {
-			out("No test data available");
-			debug("You may override readTestData to read some data");
-			return;
-		}
-		final int depth = params.get().get(0);
-		final int parallelism = params.get().get(1);
-		final int cutTime = params.get().get(2);
-		doPerfStat(testData, (TestableMoveGeneratorSupplier<?>)getEngine(), depth, parallelism, cutTime);
-	}
-
-	private <M> void doPerfStat(Collection<PerfTTestData> testData, TestableMoveGeneratorSupplier<M> engine, int depth, final int parallelism, int cutTime) {
-		final MoveGeneratorChecker test = new MoveGeneratorChecker(testData);
-		test.setErrorManager(e-> out(e,0));
-		test.setCountErrorManager(e -> out("Error for "+e.getStartPosition()+" expected "+e.getExpectedCount()+" got "+e.getActualCount()));
-		final TimerTask task = new TimerTask() {
-			@Override
-			public void run() {
-				doStop(null);
-			}
-		};
-		doBackground(() -> {
-			final Timer timer = new Timer();
-			timer.schedule(task, 1000L*cutTime);
-			try {
-				final long start = System.currentTimeMillis();
-				long sum = test.run(depth, parallelism, engine);
-				final long duration = System.currentTimeMillis() - start;
-				out("perf: "+f(sum)+" moves in "+f(duration)+"ms ("+f(sum*1000/duration)+" mv/s) (using "+parallelism+" thread(s))");
-			} finally {
-				timer.cancel();
-			}
-			
-		}, test::cancel);
-	}
-	
-	protected Collection<PerfTTestData> readTestData() {
-		return Collections.emptyList();
-	}
-
-	protected void doEngine(String[] tokens) {
-		if (tokens.length==0) {
-			out(ENGINE_CMD+" "+engine.getId());
-			engines.keySet().stream().filter(engineId -> !engineId.equals(engine.getId())).forEach(engineId -> out(ENGINE_CMD+" "+engineId));
-			return;
-		}
-		final String engineId = tokens[0];
-		final Engine newEngine = engines.get(engineId);
-		if (newEngine!=null) {
-			if (newEngine.equals(this.engine)) {
-			 return;	
-			}
-			final String pos = getEngine().getFEN();
-			if (pos!=null) {
-				newEngine.setStartPosition(pos);
-			}
-			this.engine = newEngine;
-			buildOptionsTable(newEngine.getOptions());
-			out(ENGINE_CMD+" "+engineId+" ok");
-		} else {
-			debug(ENGINE_CMD+" "+engineId+" is unknown");
-		}
-	}
-	
-	protected Engine getEngine() {
-		return engine;
-	}
-	
-	private void buildOptionsTable(Option<?>[] options) {
-		this.options = new HashMap<>();
-		Arrays.stream(options).forEach(o -> this.options.put(o.getName(), o));
-	}
-
-	private static String f(long num) {
-		return NumberFormat.getInstance().format(num);
-	}
-
-	@Override
-	public void run() {
-		while (true) {
-			log("Waiting for command...");
-			final String command=getNextCommand();
-	    	log(">",command);
-			if ("quit".equals(command) || "q".equals(command)) {
-				backTasks.close();
-				break;
-			}
-			final String[] tokens = command.split(" ");
-			if (!command.isEmpty() && tokens.length>0) {
-				final Consumer<String[]> executor = executors.get(tokens[0]);
-				if (executor==null) {
-					debug("unknown command");
-				} else {
-					try {
-						executor.accept(Arrays.copyOfRange(tokens, 1, tokens.length));
-					} catch (RuntimeException e) {
-						out(e,0);
-					}
+			final Optional<GoParameters> goOptions = parse(GoParameters::new, GoParameters.PARSER, tokens);
+			if (goOptions.isPresent()) {
+				final StoppableTask<GoReply> task = engine.go(goOptions.get());
+				final boolean started = doBackground(() -> processGo(task), task::stop, e -> err(GO_CMD, e));
+				if (!started) {
+					debug("Engine is already working");
 				}
 			}
 		}
 	}
 
-	protected void out(Throwable e, int level) {
-		out((level>0 ? "caused by":"")+e.toString());
-		Arrays.stream(e.getStackTrace()).forEach(f -> out(f.toString()));
-		if (e.getCause()!=null) {
-			out(e.getCause(),level+1);
+	private void processGo(final StoppableTask<GoReply> task) throws Exception {
+		final GoReply goReply = task.call();
+		final Optional<String> mainInfo = goReply.getMainInfoString();
+		if (mainInfo.isPresent()) {
+			this.out(mainInfo.get());
+			final Optional<Info> info = goReply.getInfo();
+			final int nb = info.isPresent() ? info.get().getExtraMoves().size() : 0;
+			for (int i = 1; i <= nb; i++) {
+				goReply.getInfoString(i).ifPresent(this::out);
+			}
 		}
+		out(goReply.toString());
+	}
+
+	/** Parses the parameter tokens of a command.
+	 * @param <T> The type of the object that represents the command parameters.
+	 * @param builder A supplier that creates a new instance of the object that represents the command parameters.
+	 * @param parser The parser that will parse the tokens.
+	 * @param tokens The tokens to parse (excluding the command name itself).
+	 * @return An optional containing the parsed object or empty if the parsing failed.
+	 */
+	protected <T> Optional<T> parse(Supplier<T> builder, Parser<T> parser, Deque<String> tokens) {
+		try {
+			final T result = builder.get();
+			final List<String> ignored = parser.parse(result, tokens);
+			if (!ignored.isEmpty()) {
+				debug("The following parameters were ignored "+ignored);
+			}
+			return Optional.of(result);
+		} catch (IllegalArgumentException e) {
+			debug("There's an illegal argument in "+tokens);
+			return Optional.empty();
+		}
+	}
+
+	/** Executes the stop command.
+	 * @param tokens The tokens of the command.
+	 */
+	protected void doStop(Deque<String> tokens) {
+		if (!backTasks.stop()) {
+			debug("Nothing to stop");
+		}
+	}
+	
+	/** Executes the engine command.
+	 * <br>This command allow to list the available engines (if tokens is empty) or to change the current engine.
+	 * @param tokens The tokens of the command.
+	 */
+	protected void doEngine(Deque<String> tokens) {
+		if (tokens.isEmpty()) {
+			out(ENGINE_CMD+" "+engine.getId());
+			engines.keySet().stream().filter(engineId -> !engineId.equals(engine.getId())).forEach(engineId -> out(ENGINE_CMD+" "+engineId));
+			return;
+		}
+		final String engineId = tokens.peek();
+		final Engine newEngine = engines.get(engineId);
+		if (newEngine!=null) {
+			if (newEngine.equals(this.engine)) {
+			 return;	
+			}
+			if (isPositionSet()) {
+				isPositionSet = false;
+				debug("position is cleared by engine change");
+			}
+			this.engine = newEngine;
+			this.options =  null;
+			out(ENGINE_CMD+" "+engineId+" ok");
+		} else {
+			debug(ENGINE_CMD+" "+engineId+" is unknown");
+		}
+	}
+
+	private Map<String, Option<?>> getOptions() {
+		if (options==null) {
+			this.options = engine.getOptions();
+		}
+		return options;
+	}
+	
+	/** Executes the quit command.
+	 * @param tokens The tokens of the command.
+	 */
+	protected void doQuit(Deque<String> tokens) {
+		isRunning = false;
+	}
+
+	@Override
+	public void run() {
+		init();
+		isRunning = true;
+		while (isRunning) {
+			log("Waiting for command...");
+			final String command=getNextCommand().trim();
+			if (!command.isEmpty()) {
+				doCommand(command);
+			}
+		}
+	}
+	
+	private void init() {
+		final String initFile = System.getProperty(INIT_COMMANDS_PROPERTY_FILE);
+		if (initFile!=null) {
+			try {
+				Files.readAllLines(Paths.get(initFile)).stream().map(String::trim).filter(s -> !s.isEmpty()).forEach(this::doCommand);
+			} catch (IOException e) {
+				err("init engine", e);
+			}
+		}
+
+	}
+
+	/** Executes a command.
+	 * @param command The command to execute
+	 * @return true if the command was found
+	 */
+	protected boolean doCommand(final String command) {
+    	log(">",command);
+		final Deque<String> tokens = new LinkedList<>(Arrays.asList(command.split(" ")));
+		final Consumer<Deque<String>> executor = executors.get(tokens.pop());
+		if (executor==null) {
+			debug("unknown command");
+			return false;
+		} else {
+			try {
+				executor.accept(tokens);
+			} catch (RuntimeException e) {
+				err(command, e);
+			}
+			return true;
+		}
+	}
+
+	/** Sends an error message on an exception.
+	 * <br>The default implementation uses the {@link #err(CharSequence)} method to write the message and the exception stack trace.
+	 * <br>One can override this method in order to change this behavior.
+	 * @param tag The tag of the command that failed
+	 * @param e The exception that occurred
+	 */
+	protected void err(String tag, Throwable e) {
+		err("Error with "+tag+" tag");
+		err(e,0);
+	}
+	
+	private void err(Throwable e, int level) {
+		err((level>0 ? "caused by ":"")+e.toString());
+		Arrays.stream(e.getStackTrace()).forEach(f -> err(f.toString()));
+		if (e.getCause()!=null) {
+			err(e.getCause(),level+1);
+		}
+	}
+	
+	/** Sends an error message.
+	 * <br>The default implementation write the message the <code>System.err</code>.
+	 * <br>One can override this method in order to send error messages to somewhere else.
+	 * @param message The message to send.
+	 */
+	protected void err(CharSequence message) {
+		System.err.println(message);
 	}
 	
 	private void log(String... message) {
@@ -406,28 +450,31 @@ public class UCI implements Runnable {
 			throw new UncheckedIOException(e);
 		}
 	}
+	
+	/** Gets the input reader.
+	 * <br>The default implementation returns a reader that gets commands from the standard console.
+	 * <br>One can override this method in order to get commands from somewhere other than standard console input.
+	 * <br>The returned supplier should block until a line is available. If the end of input is reached, it should throw an {@link UncheckedIOException}.
+	 * @return The input reader.
+	 */
+	protected Supplier<String> getInputSupplier() {
+		if (in==null) {
+			in = new ConsoleLineReader();
+		}
+		return in;
+	}
 
 	/** Gets the next command from UCI client.
 	 * <br>This method blocks until a command is available.
 	 * <br>One can override this method in order to get commands from somewhere other than standard console input.
-	 * @return The net command
+	 * @return The next command
 	 */
 	protected String getNextCommand() {
-		String line;
-	    if (System.console() != null) {
-	        line = System.console().readLine();
-	    } else {
-		    try {
-		    	line = IN.readLine();
-		    } catch (IOException e) {
-		    	throw new UncheckedIOException(e);
-		    }
-	    }
-    	return line.trim();
+    	return getInputSupplier().get().trim();
 	}
 	
 	/** Send a reply to UCI client.
-	 * <br>One can override this method in order to send replies to somewhere other than standard console input.
+	 * <br>One can override this method in order to send replies to somewhere other than standard console output.
 	 * @param message The reply to send.
 	 */
 	@SuppressWarnings("java:S106")
@@ -436,12 +483,38 @@ public class UCI implements Runnable {
 		System.out.println(message);
 	}
 	
+	/** Tests whether the debug mode is on.
+	 * @return true if debug mode is on.
+	 * @see #doDebug(Deque)
+	 */
+	protected boolean isDebugMode() {
+		return debugUCI;
+	}
+	
+	/** Sends a debug message.
+	 * <br>The default implementation calls {@link #log(String...)} then, if debug is on, outputs an <i>info string</i> message.
+	 * <br>One can override this method in order to send debug messages to somewhere else than standard uci output.
+	 * @param message The message to send.
+	 * @see #isDebugMode()
+	 * @see #out(CharSequence)
+	 */
 	@SuppressWarnings("java:S106")
 	protected void debug(CharSequence message) {
     	log(":","info","UCI debug is", Boolean.toString(debugUCI),message.toString());
 		if (debugUCI) {
-			System.out.print("info string ");
-			System.out.println(message.toString());
+			out("info string "+message);
 		}
+	}
+	
+	/** Tests whether a position is set.
+	 * @return true if a position is set
+	 */
+	protected boolean isPositionSet() {
+		return isPositionSet;
+	}
+
+	@Override
+	public void close() {
+		backTasks.close();
 	}
 }

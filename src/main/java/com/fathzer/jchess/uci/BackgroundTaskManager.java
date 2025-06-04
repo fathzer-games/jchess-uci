@@ -5,24 +5,33 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+import com.fathzer.games.util.exec.CustomThreadFactory;
+
 class BackgroundTaskManager implements AutoCloseable {
-	private final ExecutorService exec = Executors.newFixedThreadPool(1);
-	private final AtomicReference<Runnable> stopper = new AtomicReference<>();
-	private final Consumer<Exception> logger;
-	
-	public BackgroundTaskManager(Consumer<Exception> logger) {
-		this.logger = logger;
+	static class Task {
+		private final Consumer<Exception> logger;
+		private final ThrowingRunnable run;
+		private final Runnable stopTask;
+		
+		Task(ThrowingRunnable task, Runnable stopTask, Consumer<Exception> logger) {
+			this.run = task;
+			this.stopTask = stopTask;
+			this.logger = logger;
+		}
 	}
+
+	private final ExecutorService exec = Executors.newFixedThreadPool(1, new CustomThreadFactory(()->"Stoppable Tasks", true));
+	private final AtomicReference<Task> current = new AtomicReference<>();
 	
-	boolean doBackground(Runnable task, Runnable stopTask) {
-		final boolean result = this.stopper.compareAndSet(null, stopTask);
+	boolean doBackground(Task task) {
+		final boolean result = this.current.compareAndSet(null, task);
 		if (result) {
 			exec.submit(() -> {
 				try {
-					task.run();
-					this.stopper.set(null);
+					task.run.run();
+					this.current.set(null);
 				} catch (Exception e) {
-					logger.accept(e);
+					task.logger.accept(e);
 					stop();
 				}
 			});
@@ -34,12 +43,12 @@ class BackgroundTaskManager implements AutoCloseable {
 	 * @return true if a task was executed.
 	 */
 	boolean stop() {
-		final Runnable stopTask = stopper.getAndSet(null);
+		final Task stopTask = current.getAndSet(null);
 		if (stopTask!=null) {
 			try {
-				stopTask.run();
+				stopTask.stopTask.run();
 			} catch (Exception e) {
-				logger.accept(e);
+				stopTask.logger.accept(e);
 			}
 		}
 		return stopTask!=null;

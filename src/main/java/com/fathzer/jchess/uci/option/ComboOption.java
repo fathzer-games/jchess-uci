@@ -4,10 +4,18 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+/** A combo UCI option. */
 public class ComboOption extends Option<String> {
 	private final String defaultValue;
 	private final Set<String> values;
 	
+	/** Constructor.
+	 * @param name The name of the option
+	 * @param trigger The action to perform when the option is set
+	 * @param defaultValue The default value of the option
+	 * @param values The values the option can take
+	 * @throws IllegalArgumentException if the default value is not in the set of values or if the trigger or name are null
+	 */
 	public ComboOption(String name, Consumer<String> trigger, String defaultValue, Set<String> values) {
 		super(name, trigger);
 		if (!values.contains(defaultValue) || values.isEmpty()) {

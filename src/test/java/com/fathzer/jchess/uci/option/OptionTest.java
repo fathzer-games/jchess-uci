@@ -8,6 +8,7 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
@@ -18,11 +19,11 @@ class OptionTest {
 	void testButton() {
 		final String name = "Clear Hash";
 		final AtomicBoolean called = new AtomicBoolean();
-		ButtonOption b = new ButtonOption(name, x->{called.set(true);});
+		ButtonOption b = new ButtonOption(name, () -> called.set(true));
 		assertFalse(called.get());
 		assertEquals("option name "+name+" type button",b.toUCI());
 		assertNull(b.getValue());
-		assertThrows(IllegalArgumentException.class, () -> new ButtonOption(null, x->{}));
+		assertThrows(IllegalArgumentException.class, () -> new ButtonOption(null, ()->{}));
 		assertThrows(IllegalArgumentException.class, () -> new ButtonOption("x", null));
 		// Test we can call setValue with null
 		b.setValue(null);
@@ -34,7 +35,7 @@ class OptionTest {
 		final AtomicReference<String> ref = new AtomicReference<>();
 		final String name = "NalimovPath";
 		final String defaultValue = "c:\\\\";
-		StringOption s = new StringOption(name, x->{ref.set(x);}, defaultValue);
+		StringOption s = new StringOption(name, ref::set, defaultValue);
 		assertEquals(defaultValue, ref.get());
 		assertEquals(defaultValue, s.getValue());
 		final String value = "http://x.com";
@@ -53,7 +54,7 @@ class OptionTest {
 		final AtomicBoolean ref = new AtomicBoolean();
 		final String name = "Nullmove";
 		final boolean defaultValue = true;
-		CheckOption s = new CheckOption(name, x->{ref.set(x);}, defaultValue);
+		CheckOption s = new CheckOption(name, ref::set, defaultValue);
 		assertEquals(defaultValue, ref.get());
 		assertEquals(defaultValue, s.getValue());
 		s.setValue("false");
@@ -72,7 +73,7 @@ class OptionTest {
 		final String name = "Style";
 		final String defaultValue = "Normal";
 		final LinkedHashSet<String> values = new LinkedHashSet<>(Arrays.asList("Solid",defaultValue,"Risky"));
-		ComboOption s = new ComboOption(name, x->{ref.set(x);}, defaultValue, values);
+		ComboOption s = new ComboOption(name, ref::set, defaultValue, values);
 		assertEquals(defaultValue, ref.get());
 		assertEquals(defaultValue, s.getValue());
 		final String value = "Solid";
@@ -95,7 +96,7 @@ class OptionTest {
 		final AtomicInteger ref = new AtomicInteger();
 		final String name = "Selectivity";
 		final int defaultValue = 2;
-		SpinOption s = new SpinOption(name, x->{ref.set(x);}, defaultValue, 0, 4);
+		IntegerSpinOption s = new IntegerSpinOption(name, ref::set, defaultValue, 0, 4);
 		assertEquals(defaultValue, ref.get());
 		assertEquals(defaultValue, s.getValue());
 		final int value = 3;
@@ -103,11 +104,28 @@ class OptionTest {
 		assertEquals(value, ref.get());
 		assertEquals(value, s.getValue());
 		assertEquals("option name "+name+" type spin default "+defaultValue+" min 0 max 4",s.toUCI());
-		assertThrows(IllegalArgumentException.class, () -> new SpinOption(null, x->{}, defaultValue, 0, 4));
-		assertThrows(IllegalArgumentException.class, () -> new SpinOption(name, null, defaultValue, 0, 4));
-		assertThrows(IllegalArgumentException.class, () -> new SpinOption(name, x->{}, -1, 0, 4));
-		assertThrows(IllegalArgumentException.class, () -> new SpinOption(name, x->{}, 2, 4, 0));
+		assertThrows(IllegalArgumentException.class, () -> new IntegerSpinOption(null, x->{}, defaultValue, 0, 4));
+		assertThrows(IllegalArgumentException.class, () -> new IntegerSpinOption(name, null, defaultValue, 0, 4));
+		assertThrows(IllegalArgumentException.class, () -> new IntegerSpinOption(name, x->{}, -1, 0, 4));
+		assertThrows(IllegalArgumentException.class, () -> new IntegerSpinOption(name, x->{}, 2, 4, 0));
 		assertThrows(IllegalArgumentException.class, () -> s.setValue(null));
 		assertThrows(IllegalArgumentException.class, () -> s.setValue("8"));
+
+		final AtomicLong aLong = new AtomicLong();
+		LongSpinOption ls = new LongSpinOption(name, aLong::set, defaultValue, -1824L, 25842L);
+		assertEquals(defaultValue, aLong.get());
+		assertEquals(defaultValue, ls.getValue());
+		final long longValue = -1824;
+		ls.setValue(Long.toString(longValue));
+		assertEquals(longValue, aLong.get());
+		assertEquals(longValue, ls.getValue());
+		assertEquals("option name "+name+" type spin default "+defaultValue+" min -1824 max 25842",ls.toUCI());
+		assertThrows(IllegalArgumentException.class, () -> new LongSpinOption(null, x->{}, defaultValue, 1824L, 25842L));
+		assertThrows(IllegalArgumentException.class, () -> new LongSpinOption(name, null, defaultValue, 1824L, 25842L));
+		assertThrows(IllegalArgumentException.class, () -> new LongSpinOption(name, x->{}, -1L, 1824L, 25842L));
+		assertThrows(IllegalArgumentException.class, () -> new LongSpinOption(name, x->{}, 2L, 25842L, 1824L));
+		assertThrows(IllegalArgumentException.class, () -> ls.setValue(null));
+		assertThrows(IllegalArgumentException.class, () -> ls.setValue("-1825"));
+		assertThrows(IllegalArgumentException.class, () -> ls.setValue("25843"));
 	}
 }
